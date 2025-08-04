@@ -130,10 +130,8 @@ github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyua
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
 github.com/mitchellh/reflectwalk v1.0.2 h1:G2LzWKi524PWgd3mLHV8Y5k7s6XUvT0Gef6zxSIeXaQ=
 github.com/mitchellh/reflectwalk v1.0.2/go.mod h1:mSTlrgnPZtwu0c4WaC2kGObEpuNDbx0jmZXqmk4esnw=
-github.com/ofbjansen/azurenamingtool-client-go v0.2.0 h1:vluseq0eyCbX2yuzI+UnmD0u9Z84xYXXtXH7iB8A5Ik=
-github.com/ofbjansen/azurenamingtool-client-go v0.2.0/go.mod h1:8iFxmLdN6OYNFV/EqDmX9on3YeW0vFdL7K2T/OIv/IE=
-github.com/ofbjansen/azurenamingtool-client-go v0.3.0 h1:sF9meTLY3jgta4Bp0QiIAGaWDNAgwMgJ3u0h4YSqg/E=
-github.com/ofbjansen/azurenamingtool-client-go v0.3.0/go.mod h1:8iFxmLdN6OYNFV/EqDmX9on3YeW0vFdL7K2T/OIv/IE=
+github.com/ofbjansen/azurenamingtool-client-go v0.4.0 h1:R/pUlLwvEXXr/uRLHoIjizA9oaKyKRSFLNmab6lYQoI=
+github.com/ofbjansen/azurenamingtool-client-go v0.4.0/go.mod h1:8iFxmLdN6OYNFV/EqDmX9on3YeW0vFdL7K2T/OIv/IE=
 github.com/oklog/run v1.0.0 h1:Ru7dDtJNOyC66gQ5dQmaCa0qIsAUFY3sFpK1Xk8igrw=
 github.com/oklog/run v1.0.0/go.mod h1:dlhp/R75TPv97u0XWUtDeV/lRKWPKSdTuV0TZvrmrQA=
 github.com/pjbgf/sha1cd v0.3.2 h1:a9wb0bp1oC2TGwStyn0Umc/IGKQnEgF0vVaZ8QF8eo4=

@@ -7,7 +7,7 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.28.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0
 	github.com/hashicorp/terraform-plugin-testing v1.13.2
-	github.com/ofbjansen/azurenamingtool-client-go v0.3.0
+	github.com/ofbjansen/azurenamingtool-client-go v0.4.0
 )
 
 require (
