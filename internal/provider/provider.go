@@ -161,6 +161,7 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 func (p *proactnamingProvider) DataSources(_ context.Context) []func() datasource.DataSource {
   return []func() datasource.DataSource {
 	NewresourceTypesDataSource,
+    NewGeneratedNameDataSource,
   }
 }
 
