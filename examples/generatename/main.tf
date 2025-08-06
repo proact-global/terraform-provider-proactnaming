@@ -13,15 +13,19 @@ provider "proactnaming" {
 
 resource "proactnaming_generate_name" "name" {
   organization  = "man"
-  resource_type = "st"
+  resource_type = "rg"
   application   = "app"
-  function      = ""
-  instance      = "002"
+  function      = "test"
+  instance      = "004"
   location      = "euw"
   environment   = "dev"
 
 }
 
-output "proactnaming_generate_name_id" {
-  value = proactnaming_generate_name.name
+data "proactnaming_generated_name" "example" {
+  id = "31"
+}
+
+output "proactnaming_generate_name" {
+  value = data.proactnaming_generated_name.example
 }
