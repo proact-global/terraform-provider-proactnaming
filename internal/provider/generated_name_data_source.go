@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/ofbjansen/azurenamingtool-client-go"
+	"github.com/proact-global/azurenamingtool-client-go"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -35,8 +35,8 @@ type GeneratedNameDataSourceModel struct {
 // GeneratedNameModel maps GeneratedName schema data.
 type GeneratedNameModel struct {
 	ID               types.Int64  `tfsdk:"id"`
-	ResourceName     types.String `tfsdk:"resourceName"`
-	ResourceTypeName types.String `tfsdk:"resourceTypeName"`
+	ResourceName     types.String `tfsdk:"resource_name"`
+	ResourceTypeName types.String `tfsdk:"resource_type_name"`
 }
 
 // Metadata returns the data source type name.
@@ -62,7 +62,7 @@ func (d *GeneratedNameDataSource) Schema(_ context.Context, _ datasource.SchemaR
 						"resource_name": schema.StringAttribute{
 							Computed: true,
 						},
-						"resourcetype_name": schema.StringAttribute{
+						"resource_type_name": schema.StringAttribute{
 							Computed: true,
 						},
 					},
@@ -97,11 +97,11 @@ func (d *GeneratedNameDataSource) Read(ctx context.Context, req datasource.ReadR
 
 	// Map response body to model
 	state.GeneratedName = nil // reset before appending
-	for _, generated_name := range generatedName {
+	if generatedName != nil {
 		generatedNameState := GeneratedNameModel{
-			ID:               types.Int64Value(int64(generated_name.ID)),
-			ResourceName:     types.StringValue(generated_name.ResourceName),
-			ResourceTypeName: types.StringValue(generated_name.ResourceTypeName),
+			ID:               types.Int64Value(int64(generatedName.ID)),
+			ResourceName:     types.StringValue(generatedName.ResourceName),
+			ResourceTypeName: types.StringValue(generatedName.ResourceTypeName),
 		}
 		state.GeneratedName = append(state.GeneratedName, generatedNameState)
 	}
