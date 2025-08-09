@@ -16,7 +16,7 @@ resource "proactnaming_generate_name" "name" {
   resource_type = "rg"
   application   = "app"
   function      = "test"
-  instance      = "004"
+  instance      = "005"
   location      = "euw"
   environment   = "dev"
 
@@ -27,5 +27,5 @@ data "proactnaming_generated_name" "example" {
 }
 
 output "proactnaming_generate_name" {
-  value = data.proactnaming_generated_name.example
+  value = proactnaming_generate_name.name
 }

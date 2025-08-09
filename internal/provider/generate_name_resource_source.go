@@ -3,15 +3,10 @@ package provider
 import (
 	"context"
 	"fmt"
-	"strings"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/proact-global/azurenamingtool-client-go"
 )
 
@@ -26,26 +21,27 @@ func NewGenerateName() resource.Resource {
 	return &generateName{}
 }
 
-// generatedName is the resource implementation.
+// generateName is the resource implementation.
 type generateName struct {
 	client *azurenamingtool.Client
 }
 
 // generateNameModel maps the resource schema data.
 type generateNameModel struct {
-	ID                  types.Int64  `tfsdk:"id"`
-	ResourceName        types.String `tfsdk:"resource_name"`
-	ResourceTypeName    types.String `tfsdk:"resource_type_name"`
-	Message             types.String `tfsdk:"message"`
-	Environment         types.String `tfsdk:"environment"`
-	Instance            types.String `tfsdk:"instance"`
-	Location            types.String `tfsdk:"location"`
-	Organization        types.String `tfsdk:"organization"`
-	ResourceType        types.String `tfsdk:"resource_type"`
-	Application         types.String `tfsdk:"application"`
-	ResourceFunction    types.String `tfsdk:"function"`
-	Success             types.Bool   `tfsdk:"success"`
-	ResourceNameDetails types.Map    `tfsdk:"resource_name_details"`
+	// Input fields for name generation
+	Organization types.String `tfsdk:"organization"`
+	ResourceType types.String `tfsdk:"resource_type"`
+	Application  types.String `tfsdk:"application"`
+	Function     types.String `tfsdk:"function"`
+	Instance     types.String `tfsdk:"instance"`
+	Location     types.String `tfsdk:"location"`
+	Environment  types.String `tfsdk:"environment"`
+
+	// Output fields from the API
+	ID           types.Int64  `tfsdk:"id"`
+	ResourceName types.String `tfsdk:"resource_name"`
+	Success      types.Bool   `tfsdk:"success"`
+	Message      types.String `tfsdk:"message"`
 }
 
 // Metadata returns the resource type name.
@@ -56,86 +52,55 @@ func (r *generateName) Metadata(_ context.Context, req resource.MetadataRequest,
 // Schema defines the schema for the resource.
 func (r *generateName) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Generates standardized Azure resource names using the Azure Naming Tool API. " +
-			"This resource creates names following organizational naming conventions and ensures consistency across infrastructure.",
-		MarkdownDescription: "Generates standardized Azure resource names using the Azure Naming Tool API.\n\n" +
-			"This resource creates names following organizational naming conventions and ensures consistency across infrastructure. " +
-			"The generated names comply with Azure resource naming requirements and organizational standards.\n\n" +
-			"**Note:** All input parameters force replacement when changed, as generated names are immutable.",
+		Description:         "Generates standardized Azure resource names using the Azure Naming Tool.",
+		MarkdownDescription: "Generates standardized Azure resource names using the Azure Naming Tool following organizational naming conventions.",
 		Attributes: map[string]schema.Attribute{
+			// Input attributes
+			"organization": schema.StringAttribute{
+				Description: "Organization identifier for the resource name.",
+				Required:    true,
+			},
+			"resource_type": schema.StringAttribute{
+				Description: "Azure resource type short name (e.g., 'rg', 'st', 'vm').",
+				Required:    true,
+			},
+			"application": schema.StringAttribute{
+				Description: "Application identifier for the resource name.",
+				Required:    true,
+			},
+			"function": schema.StringAttribute{
+				Description: "Function or purpose identifier for the resource name.",
+				Optional:    true,
+			},
+			"instance": schema.StringAttribute{
+				Description: "Instance number or identifier for the resource name.",
+				Required:    true,
+			},
+			"location": schema.StringAttribute{
+				Description: "Azure region identifier (e.g., 'euw', 'eus').",
+				Required:    true,
+			},
+			"environment": schema.StringAttribute{
+				Description: "Environment identifier (e.g., 'dev', 'test', 'prod').",
+				Required:    true,
+			},
+
+			// Output attributes
 			"id": schema.Int64Attribute{
-				Description: "Unique identifier for the generated name resource.",
+				Description: "The unique identifier for the generated name in the Azure Naming Tool.",
 				Computed:    true,
 			},
 			"resource_name": schema.StringAttribute{
-				Description: "The generated resource name following Azure naming conventions.",
-				Computed:    true,
-			},
-			"message": schema.StringAttribute{
-				Description: "Response message from the naming tool API.",
+				Description: "The generated Azure resource name.",
 				Computed:    true,
 			},
 			"success": schema.BoolAttribute{
 				Description: "Indicates whether the name generation was successful.",
 				Computed:    true,
 			},
-			"resource_name_details": schema.MapAttribute{
-				Description: "Detailed breakdown of the generated resource name components.",
+			"message": schema.StringAttribute{
+				Description: "Message from the Azure Naming Tool API.",
 				Computed:    true,
-				ElementType: types.StringType,
-			},
-			"environment": schema.StringAttribute{
-				Description: "Environment designation (e.g., 'dev', 'test', 'prod').",
-				Required:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"instance": schema.StringAttribute{
-				Description: "Instance number for the resource (e.g., '001', '002').",
-				Required:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"location": schema.StringAttribute{
-				Description: "Azure region/location code (e.g., 'euw' for West Europe).",
-				Required:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"organization": schema.StringAttribute{
-				Description: "Organization identifier (e.g., 'acme', 'contoso').",
-				Required:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"resource_type": schema.StringAttribute{
-				Description: "Azure resource type abbreviation (e.g., 'st' for Storage Account, 'vm' for Virtual Machine).",
-				Required:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"resource_type_name": schema.StringAttribute{
-				Description: "Full name of the Azure resource type.",
-				Computed:    true,
-			},
-			"application": schema.StringAttribute{
-				Description: "Application name or identifier (e.g., 'web', 'api', 'db').",
-				Required:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"function": schema.StringAttribute{
-				Description: "Function or role designation (e.g., 'web', 'api'). Can be empty.",
-				Required:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
 			},
 		},
 	}
@@ -143,262 +108,224 @@ func (r *generateName) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 
 // Create creates the resource and sets the initial Terraform state.
 func (r *generateName) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	tflog.Debug(ctx, "Starting create operation for generate_name resource")
+	var plan generateNameModel
 
 	// Retrieve values from plan
-	var plan generateNameModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
-		tflog.Error(ctx, "Failed to retrieve plan data", map[string]interface{}{
-			"diagnostics": resp.Diagnostics,
-		})
 		return
 	}
 
-	tflog.Info(ctx, "Creating generate_name resource", map[string]interface{}{
-		"organization":  plan.Organization.ValueString(),
-		"resource_type": plan.ResourceType.ValueString(),
-		"application":   plan.Application.ValueString(),
-		"environment":   plan.Environment.ValueString(),
-		"location":      plan.Location.ValueString(),
-		"instance":      plan.Instance.ValueString(),
-	})
+	// Check if we already have an ID from Read (planning phase)
+	if !plan.ID.IsNull() && !plan.ID.IsUnknown() {
+		// Use the existing ID from the planning phase
+		id := plan.ID.ValueInt64()
+		id16 := int16(id)
 
-	var items []azurenamingtool.GenerateNameRequest
-	items = append(items, azurenamingtool.GenerateNameRequest{
-		ResourceEnvironment: plan.Environment.ValueString(),
-		ResourceFunction:    plan.ResourceFunction.ValueString(),
-		ResourceInstance:    plan.Instance.ValueString(),
-		ResourceLocation:    plan.Location.ValueString(),
-		ResourceOrg:         plan.Organization.ValueString(),
-		ResourceType:        plan.ResourceType.ValueString(),
-		CustomComponents: azurenamingtool.GenerateNameRequestCustomComponents{
-			Application: plan.Application.ValueString(),
-		},
-	})
-
-	// Call the client to generate the name
-	generateNames, err := r.client.GenerateName(items[0])
-	if err != nil {
-		tflog.Error(ctx, "API call to generate name failed", map[string]interface{}{
-			"error": err.Error(),
-		})
-
-		// Enhanced error handling with specific error types
-		if strings.Contains(err.Error(), "unauthorized") || strings.Contains(err.Error(), "401") {
+		// Get the name details using the ID
+		nameDetails, err := r.client.GetName(id16)
+		if err != nil {
 			resp.Diagnostics.AddError(
-				"Authentication Failed",
-				"Invalid API key or insufficient permissions. Please check your API key configuration and ensure it has the necessary permissions to generate names.",
+				"Unable to Retrieve Generated Name",
+				fmt.Sprintf("An error occurred while retrieving the generated name with ID %d: %s", id, err.Error()),
 			)
-		} else if strings.Contains(err.Error(), "forbidden") || strings.Contains(err.Error(), "403") {
-			resp.Diagnostics.AddError(
-				"Access Forbidden",
-				"The API key does not have permission to perform this operation. Please contact your administrator.",
-			)
-		} else if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "404") {
-			resp.Diagnostics.AddError(
-				"Resource Type Not Found",
-				fmt.Sprintf("The specified resource type '%s' was not found in the naming tool configuration.", plan.ResourceType.ValueString()),
-			)
-		} else if strings.Contains(err.Error(), "timeout") {
-			resp.Diagnostics.AddError(
-				"Request Timeout",
-				"The request to the naming tool API timed out. Please try again or check the API endpoint status.",
-			)
-		} else if strings.Contains(err.Error(), "connection") {
-			resp.Diagnostics.AddError(
-				"Connection Error",
-				"Unable to connect to the naming tool API. Please check the host configuration and network connectivity.",
-			)
-		} else {
-			resp.Diagnostics.AddError(
-				"Unable to Create azurenamingtool generated_name",
-				fmt.Sprintf("An unexpected error occurred while generating the name: %s", err.Error()),
-			)
+			return
 		}
-		return
+
+		// Set the final state
+		plan.ID = types.Int64Value(int64(nameDetails.ID))
+		plan.ResourceName = types.StringValue(nameDetails.ResourceName)
+		plan.Success = types.BoolValue(true)
+		plan.Message = types.StringValue("Name successfully created and retrieved")
+	} else {
+		// Fallback: Generate the name if no ID exists (shouldn't happen in normal flow)
+		generateRequest := azurenamingtool.GenerateNameRequest{
+			ResourceOrg:         plan.Organization.ValueString(),
+			ResourceType:        plan.ResourceType.ValueString(),
+			ResourceEnvironment: plan.Environment.ValueString(),
+			ResourceFunction:    plan.Function.ValueString(),
+			ResourceInstance:    plan.Instance.ValueString(),
+			ResourceLocation:    plan.Location.ValueString(),
+			CustomComponents: azurenamingtool.GenerateNameRequestCustomComponents{
+				Application: plan.Application.ValueString(),
+			},
+		}
+
+		generateResponse, err := r.client.GenerateName(generateRequest)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Generate Name",
+				fmt.Sprintf("An error occurred while generating the name: %s", err.Error()),
+			)
+			return
+		}
+
+		// Set the generated values
+		plan.ID = types.Int64Value(generateResponse.ResourceNameDetails.ID)
+		plan.ResourceName = types.StringValue(generateResponse.ResourceName)
+		plan.Success = types.BoolValue(generateResponse.Success)
+		plan.Message = types.StringValue(generateResponse.Message)
 	}
 
-	tflog.Debug(ctx, "Successfully received response from naming tool API", map[string]interface{}{
-		"resource_name": generateNames.ResourceName,
-		"success":       generateNames.Success,
-	})
-
-	detailsMap := map[string]attr.Value{}
-	// detailsMap := map[string]types.Value{}
-	// Check if ResourceNameDetails is not its zero value by checking a key field
-	if generateNames.ResourceNameDetails.ResourceTypeName != "" {
-		detailsMap["resource_type_name"] = types.StringValue(generateNames.ResourceNameDetails.ResourceTypeName)
-		// Add more fields as needed from ResourceNameDetails
-	}
-
-	state := generateNameModel{
-		ID:                  types.Int64Value(int64(generateNames.ResourceNameDetails.ID)),
-		ResourceName:        types.StringValue(generateNames.ResourceName),
-		ResourceTypeName:    types.StringValue(generateNames.ResourceNameDetails.ResourceTypeName),
-		Message:             types.StringValue(generateNames.Message),
-		Environment:         plan.Environment,
-		Instance:            plan.Instance,
-		Location:            plan.Location,
-		Organization:        plan.Organization,
-		ResourceType:        plan.ResourceType,
-		Application:         plan.Application,
-		ResourceFunction:    plan.ResourceFunction,
-		Success:             types.BoolValue(generateNames.Success),
-		ResourceNameDetails: types.MapValueMust(types.StringType, detailsMap),
-	}
-
-	// Set state
-	diags = resp.State.Set(ctx, &state)
+	// Set state to fully populated data
+	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
-		tflog.Error(ctx, "Failed to set state", map[string]interface{}{
-			"diagnostics": resp.Diagnostics,
-		})
 		return
 	}
-
-	tflog.Info(ctx, "Successfully created generate_name resource", map[string]interface{}{
-		"id":            state.ID.ValueInt64(),
-		"resource_name": state.ResourceName.ValueString(),
-		"success":       state.Success.ValueBool(),
-	})
 }
 
 // Read refreshes the Terraform state with the latest data.
+// This function generates the name during planning to show the result in terraform plan
 func (r *generateName) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	tflog.Debug(ctx, "Starting read operation for generate_name resource")
-
-	// Retrieve current state
 	var state generateNameModel
+
+	// Get current state
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
-		tflog.Error(ctx, "Failed to retrieve current state", map[string]interface{}{
-			"diagnostics": resp.Diagnostics,
-		})
 		return
 	}
 
-	tflog.Debug(ctx, "Reading generate_name resource", map[string]interface{}{
-		"id": state.ID.ValueInt64(),
-	})
+	// If we already have an ID, use GetName to get the current state
+	if !state.ID.IsNull() && !state.ID.IsUnknown() {
+		id := state.ID.ValueInt64()
+		id16 := int16(id)
 
-	// Fetch latest data from API using state.ID
-	apiResp, err := r.client.GetName(int16(state.ID.ValueInt64()))
-	if err != nil {
-		tflog.Error(ctx, "API call to get name failed", map[string]interface{}{
-			"error": err.Error(),
-			"id":    state.ID.ValueInt64(),
-		})
-
-		// Enhanced error handling for Read operation
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "404") {
-			tflog.Warn(ctx, "Resource not found, removing from state", map[string]interface{}{
-				"id": state.ID.ValueInt64(),
-			})
-			resp.State.RemoveResource(ctx)
+		nameDetails, err := r.client.GetName(id16)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Read Generated Name",
+				fmt.Sprintf("An error occurred while reading the generated name with ID %d: %s", id, err.Error()),
+			)
 			return
-		} else if strings.Contains(err.Error(), "unauthorized") || strings.Contains(err.Error(), "401") {
-			resp.Diagnostics.AddError(
-				"Authentication Failed",
-				"Invalid API key or insufficient permissions. Please check your API key configuration.",
-			)
-		} else if strings.Contains(err.Error(), "forbidden") || strings.Contains(err.Error(), "403") {
-			resp.Diagnostics.AddError(
-				"Access Forbidden",
-				"The API key does not have permission to read this resource.",
-			)
-		} else if strings.Contains(err.Error(), "timeout") {
-			resp.Diagnostics.AddError(
-				"Request Timeout",
-				"The request to the naming tool API timed out. Please try again.",
-			)
-		} else {
-			resp.Diagnostics.AddError(
-				"Unable to Read azurenamingtool generated_name",
-				fmt.Sprintf("An unexpected error occurred while reading the resource: %s", err.Error()),
-			)
 		}
-		return
+
+		// Update state with current data
+		state.ID = types.Int64Value(int64(nameDetails.ID))
+		state.ResourceName = types.StringValue(nameDetails.ResourceName)
+		state.Success = types.BoolValue(true)
+		state.Message = types.StringValue("Name successfully retrieved")
+	} else {
+		// This is for planning - generate the name to show what will be created
+		generateRequest := azurenamingtool.GenerateNameRequest{
+			ResourceOrg:         state.Organization.ValueString(),
+			ResourceType:        state.ResourceType.ValueString(),
+			ResourceEnvironment: state.Environment.ValueString(),
+			ResourceFunction:    state.Function.ValueString(),
+			ResourceInstance:    state.Instance.ValueString(),
+			ResourceLocation:    state.Location.ValueString(),
+			CustomComponents: azurenamingtool.GenerateNameRequestCustomComponents{
+				Application: state.Application.ValueString(),
+			},
+		}
+
+		generateResponse, err := r.client.GenerateName(generateRequest)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Generate Name",
+				fmt.Sprintf("An error occurred while generating the name: %s", err.Error()),
+			)
+			return
+		}
+
+		// Store the generated name details for use in Create
+		state.ID = types.Int64Value(generateResponse.ResourceNameDetails.ID)
+		state.ResourceName = types.StringValue(generateResponse.ResourceName)
+		state.Success = types.BoolValue(generateResponse.Success)
+		state.Message = types.StringValue(generateResponse.Message)
 	}
 
-	detailsMap := map[string]attr.Value{}
-	if apiResp.ResourceTypeName != "" {
-		detailsMap["resource_type_name"] = types.StringValue(apiResp.ResourceTypeName)
-	}
-
-	// Only update fields that are returned by the API
-	state.ResourceName = types.StringValue(apiResp.ResourceName)
-	state.ResourceTypeName = types.StringValue(apiResp.ResourceTypeName)
-	state.ResourceNameDetails = types.MapValueMust(types.StringType, detailsMap)
-
-	tflog.Debug(ctx, "Successfully retrieved resource data from API", map[string]interface{}{
-		"id":            state.ID.ValueInt64(),
-		"resource_name": apiResp.ResourceName,
-	})
-
-	// Set state
+	// Set refreshed state
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
-		tflog.Error(ctx, "Failed to set state during read", map[string]interface{}{
-			"diagnostics": resp.Diagnostics,
-		})
 		return
 	}
-
-	tflog.Debug(ctx, "Successfully completed read operation for generate_name resource")
 }
 
 // Update updates the resource and sets the updated Terraform state on success.
 func (r *generateName) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan generateNameModel
+
+	// Retrieve values from plan
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Generate a new name with the updated parameters
+	generateRequest := azurenamingtool.GenerateNameRequest{
+		ResourceOrg:         plan.Organization.ValueString(),
+		ResourceType:        plan.ResourceType.ValueString(),
+		ResourceEnvironment: plan.Environment.ValueString(),
+		ResourceFunction:    plan.Function.ValueString(),
+		ResourceInstance:    plan.Instance.ValueString(),
+		ResourceLocation:    plan.Location.ValueString(),
+		CustomComponents: azurenamingtool.GenerateNameRequestCustomComponents{
+			Application: plan.Application.ValueString(),
+		},
+	}
+
+	generateResponse, err := r.client.GenerateName(generateRequest)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to Generate Updated Name",
+			fmt.Sprintf("An error occurred while generating the updated name: %s", err.Error()),
+		)
+		return
+	}
+
+	// Update the state with new values
+	plan.ID = types.Int64Value(generateResponse.ResourceNameDetails.ID)
+	plan.ResourceName = types.StringValue(generateResponse.ResourceName)
+	plan.Success = types.BoolValue(generateResponse.Success)
+	plan.Message = types.StringValue(generateResponse.Message)
+
+	// Set updated state
+	diags = resp.State.Set(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 // Delete deletes the resource and removes the Terraform state on success.
 func (r *generateName) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	tflog.Debug(ctx, "Delete operation called for generate_name resource")
-	tflog.Info(ctx, "Delete operation is currently a no-op - resource will be removed from state only")
+	// The Azure Naming Tool API doesn't support deletion via API key authentication.
+	// Delete operations require both an API key and a plain text password, which is not secure.
+	// For now, we'll just remove from Terraform state without calling the API.
 
-	// NOTE: The Azure Naming Tool API currently doesn't support deletion via API key authentication.
-	// Delete functionality requires a plain text password in addition to the API key, which is
-	// not secure and not supported by this provider. An issue has been raised with the API
-	// developer to support deletion using only the API key for authentication.
-	//
-	// For now, resources are only removed from Terraform state but remain in the naming tool.
-	// This means:
-	// 1. The same name configuration cannot be recreated
-	// 2. Resources accumulate in the naming tool over time
-	// 3. Manual cleanup may be required in the naming tool interface
-	//
-	// TODO: Implement actual deletion when the API supports API-key-only authentication
+	// Add a warning to let users know about this limitation
+	resp.Diagnostics.AddWarning(
+		"Delete Operation Limitation",
+		"The Azure Naming Tool API doesn't support deletion via API key authentication. "+
+			"The generated name remains in the naming tool but has been removed from Terraform state. "+
+			"If you need to delete the name from the naming tool, you'll need to do it manually through the web interface.",
+	)
+
+	// The resource is automatically removed from state when this function completes successfully
 }
 
-// Configure adds the provider configured client to the data source.
+// Configure adds the provider configured client to the resource.
 func (r *generateName) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	tflog.Debug(ctx, "Configuring generate_name resource")
-
 	// Add a nil check when handling ProviderData because Terraform
 	// sets that data after it calls the ConfigureProvider RPC.
 	if req.ProviderData == nil {
-		tflog.Debug(ctx, "ProviderData is nil, skipping configuration")
 		return
 	}
 
 	client, ok := req.ProviderData.(*azurenamingtool.Client)
 	if !ok {
-		tflog.Error(ctx, "Unexpected provider data type", map[string]interface{}{
-			"expected": "*azurenamingtool.Client",
-			"actual":   fmt.Sprintf("%T", req.ProviderData),
-		})
 		resp.Diagnostics.AddError(
-			"Unexpected Resource Source Configure Type",
+			"Unexpected Resource Configure Type",
 			fmt.Sprintf("Expected *azurenamingtool.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
+
 		return
 	}
 
 	r.client = client
-	tflog.Debug(ctx, "Successfully configured generate_name resource with API client")
 }
