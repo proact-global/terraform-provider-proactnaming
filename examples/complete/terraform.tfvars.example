@@ -1,0 +1,13 @@
+# Example terraform.tfvars file
+# Copy this to terraform.tfvars and update with your values
+
+# Azure Naming Tool Configuration
+naming_tool_host           = "https://your-naming-tool.azurewebsites.net"
+naming_tool_apikey         = "your-api-key-here"
+naming_tool_admin_password = "your-admin-password-here"  # Optional
+
+# Organization Settings
+organization = "myorg"
+application  = "webapp"
+location     = "euw"
+environment  = "dev"

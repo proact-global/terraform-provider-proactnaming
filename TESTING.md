@@ -1,45 +1,38 @@
-# Testing Notes
+# Testing
 
-## Current Limitations
+## Prerequisites
 
-### Delete Functionality
-The Azure Naming Tool API currently doesn't support deletion via API key authentication. Delete operations require both an API key and a plain text password, which is not secure and not supported by this provider.
-
-**Impact on Testing:**
-- Resources created during tests remain in the naming tool
-- The same name configuration cannot be recreated
-- Acceptance tests use timestamp-based unique identifiers to avoid conflicts
-
-### Acceptance Tests
-
-To run acceptance tests:
+Set up your environment variables:
 
 ```bash
 export PROACTNAMING_HOST="https://your-naming-tool.azurewebsites.net"
 export PROACTNAMING_APIKEY="your-api-key"
-export TF_ACC=1
+export PROACTNAMING_ADMIN_PASSWORD="your-admin-password"  # Optional
+```
 
+## Running Tests
+
+### Unit Tests
+```bash
+go test ./internal/provider/
+```
+
+### Acceptance Tests
+```bash
+export TF_ACC=1
 go test -v ./internal/provider/ -run TestAcc
 ```
 
-**Note:** Each test run will create new resources in the naming tool that cannot be automatically cleaned up.
-
-## Manual Testing
-
-For manual testing without accumulating test resources:
-
+### Manual Testing
 ```bash
-cd examples/generatename
+cd examples/basic
 terraform init
 terraform plan
 terraform apply
 ```
 
-Use unique values for `instance` field in each run to avoid conflicts.
+## Notes
 
-## Future Enhancements
-
-Once the API supports delete operations with API key authentication:
-1. Enable full CRUD testing
-2. Add comprehensive test coverage
-3. Remove timestamp-based workarounds
+- The provider automatically cleans up preview entries during planning
+- Each resource maintains exactly one entry in the Azure Naming Tool during its lifecycle
+- Use unique `instance` values when testing to avoid naming conflicts

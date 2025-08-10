@@ -146,6 +146,8 @@ github.com/proact-global/azurenamingtool-client-go v0.5.9 h1:aMvtUGjCBRzpirZSnLw
 github.com/proact-global/azurenamingtool-client-go v0.5.9/go.mod h1:LdhEOzIgFur76UcGMGKGRhh+wPL4qrCXHOs0brHR1JI=
 github.com/proact-global/azurenamingtool-client-go v0.5.10 h1:X3Wi+x/AWUkY6Mo+eK2Ak6dpda7D2uCDpuQDFTRS1Lk=
 github.com/proact-global/azurenamingtool-client-go v0.5.10/go.mod h1:LdhEOzIgFur76UcGMGKGRhh+wPL4qrCXHOs0brHR1JI=
+github.com/proact-global/azurenamingtool-client-go v0.6.3 h1:bi8sDaZ/0YXB6a9Z63gmlVVO/PWlE0L4R7rpA8v2KPY=
+github.com/proact-global/azurenamingtool-client-go v0.6.3/go.mod h1:LdhEOzIgFur76UcGMGKGRhh+wPL4qrCXHOs0brHR1JI=
 github.com/rogpeppe/go-internal v1.6.1/go.mod h1:xXDCJY+GAPziupqXw64V24skbSoqbTEfhy4qGm1nDQc=
 github.com/rogpeppe/go-internal v1.12.0 h1:exVL4IDcn6na9z1rAb56Vxr+CgyK3nn3O+epU5NdKM8=
 github.com/rogpeppe/go-internal v1.12.0/go.mod h1:E+RYuTGaKKdloAfM02xzb0FW3Paa99yedzYV+kq4uf4=

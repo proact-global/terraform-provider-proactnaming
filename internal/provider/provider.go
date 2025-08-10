@@ -39,8 +39,9 @@ type proactnamingProvider struct {
 
 // proactnamingProviderModel maps provider schema data to a Go type.
 type proactnamingProviderModel struct {
-	Host   types.String `tfsdk:"host"`
-	APIKey types.String `tfsdk:"apikey"`
+	Host          types.String `tfsdk:"host"`
+	APIKey        types.String `tfsdk:"apikey"`
+	AdminPassword types.String `tfsdk:"admin_password"`
 }
 
 // Metadata returns the provider type name.
@@ -52,8 +53,8 @@ func (p *proactnamingProvider) Metadata(_ context.Context, _ provider.MetadataRe
 // Schema defines the provider-level schema for configuration data.
 func (p *proactnamingProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The ProAct Naming provider is used to interact with the Azure Naming Tool API to generate standardized Azure resource names following organizational naming conventions.",
-		MarkdownDescription: "The ProAct Naming provider is used to interact with the Azure Naming Tool API to generate standardized Azure resource names following organizational naming conventions.\n\n" +
+		Description: "The Proact Naming provider is used to interact with the Azure Naming Tool API to generate standardized Azure resource names following organizational naming conventions.",
+		MarkdownDescription: "The Proact Naming provider is used to interact with the Azure Naming Tool API to generate standardized Azure resource names following organizational naming conventions.\n\n" +
 			"Use this provider to ensure consistent naming across your Azure infrastructure by leveraging centralized naming rules and conventions.",
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
@@ -66,6 +67,13 @@ func (p *proactnamingProvider) Schema(_ context.Context, _ provider.SchemaReques
 				Description: "API key for authenticating with the Azure Naming Tool. Can also be set via the PROACTNAMING_APIKEY environment variable.",
 				MarkdownDescription: "API key for authenticating with the Azure Naming Tool. Can also be set via the `PROACTNAMING_APIKEY` environment variable.\n\n" +
 					"This key should have appropriate permissions to generate names via the API.",
+				Optional:  true,
+				Sensitive: true,
+			},
+			"admin_password": schema.StringAttribute{
+				Description: "Admin password for delete operations in the Azure Naming Tool. Can also be set via the PROACTNAMING_ADMIN_PASSWORD environment variable.",
+				MarkdownDescription: "Admin password for delete operations in the Azure Naming Tool. Can also be set via the `PROACTNAMING_ADMIN_PASSWORD` environment variable.\n\n" +
+					"This password is only required for delete operations and should be kept secure.",
 				Optional:  true,
 				Sensitive: true,
 			},
@@ -103,6 +111,15 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 		)
 	}
 
+	if config.AdminPassword.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("admin_password"),
+			"Unknown proactnaming Admin Password",
+			"The provider cannot create the proactnaming API client as there is an unknown configuration value for the admin password. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the PROACTNAMING_ADMIN_PASSWORD environment variable.",
+		)
+	}
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -112,6 +129,7 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 
 	host := os.Getenv("PROACTNAMING_HOST")
 	apikey := os.Getenv("PROACTNAMING_APIKEY")
+	adminpassword := os.Getenv("PROACTNAMING_ADMIN_PASSWORD")
 
 	if !config.Host.IsNull() {
 		host = config.Host.ValueString()
@@ -121,26 +139,30 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 		apikey = config.APIKey.ValueString()
 	}
 
+	if !config.AdminPassword.IsNull() {
+		adminpassword = config.AdminPassword.ValueString()
+	}
+
 	// If any of the expected configurations are missing, return
 	// errors with provider-specific guidance.
 
 	if host == "" {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("host"),
-			"Missing proactnaming API Host",
-			"The provider cannot create the proactnaming API client as there is a missing or empty value for the proactnaming API host. "+
-				"Set the host value in the configuration or use the proactnaming_HOST environment variable. "+
-				"If either is already set, ensure the value is not empty.",
+			"Missing ProAct Naming API Host",
+			"The provider cannot create the Azure Naming Tool client as there is a missing or empty value for the host. "+
+				"Set the host value in the configuration or use the PROACTNAMING_HOST environment variable. "+
+				"Example: host = \"https://your-naming-tool.azurewebsites.net\"",
 		)
 	}
 
 	if apikey == "" {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("apikey"),
-			"Missing proactnaming API API Key",
-			"The provider cannot create the proactnaming API client as there is a missing or empty value for the proactnaming API Key. "+
-				"Set the apikey value in the configuration or use the proactnaming_APIKEY environment variable. "+
-				"If either is already set, ensure the value is not empty.",
+			"Missing ProAct Naming API Key",
+			"The provider cannot create the Azure Naming Tool client as there is a missing or empty value for the API key. "+
+				"Set the apikey value in the configuration or use the PROACTNAMING_APIKEY environment variable. "+
+				"Obtain your API key from your Azure Naming Tool administrator.",
 		)
 	}
 
@@ -149,7 +171,7 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 	}
 
 	// Create a new proactnaming client using the configuration values
-	client, err := azurenamingtool.NewClient(&host, &apikey)
+	client, err := azurenamingtool.NewClient(&host, &apikey, &adminpassword)
 	if err != nil {
 		// Enhanced error handling for client creation
 		if strings.Contains(err.Error(), "invalid host") || strings.Contains(err.Error(), "malformed") {

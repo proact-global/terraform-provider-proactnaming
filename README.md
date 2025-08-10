@@ -1,53 +1,138 @@
-# Terraform Provider Scaffolding (Terraform Plugin Framework)
+# Terraform Provider for ProAct Azure Naming Tool
 
-_This template repository is built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework). The template repository built on the [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) can be found at [terraform-provider-scaffolding](https://github.com/hashicorp/terraform-provider-scaffolding). See [Which SDK Should I Use?](https://developer.hashicorp.com/terraform/plugin/framework-benefits) in the Terraform documentation for additional information._
+This Terraform provider integrates with the Azure Naming Tool to generate standardized Azure resource names following organizational naming conventions.
 
-This repository is a *template* for a [Terraform](https://www.terraform.io) provider. It is intended as a starting point for creating Terraform providers, containing:
+## Features
 
-- A resource and a data source (`internal/provider/`),
-- Examples (`examples/`) and generated documentation (`docs/`),
-- Miscellaneous meta files.
-
-These files contain boilerplate code that you will need to edit to create your own Terraform provider. Tutorials for creating Terraform providers can be found on the [HashiCorp Developer](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework) platform. _Terraform Plugin Framework specific guides are titled accordingly._
-
-Please see the [GitHub template repository documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for how to create a new repository from this template on GitHub.
-
-Once you've written your provider, you'll want to [publish it on the Terraform Registry](https://developer.hashicorp.com/terraform/registry/providers/publishing) so that others can use it.
+- **🎯 Plan Visibility**: Shows actual generated names during `terraform plan` instead of "(known after apply)"
+- **🧹 Clean Resource Management**: Automatic cleanup prevents accumulation in the Azure Naming Tool
+- **🔄 Smart Replacements**: Changes to naming inputs trigger proper resource replacement
+- **🛡️ Secure Configuration**: Sensitive credentials properly handled
+- **📋 Complete Lifecycle**: Full CRUD operations with proper state management
 
 ## Requirements
 
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
-- [Go](https://golang.org/doc/install) >= 1.23
+- [Go](https://golang.org/doc/install) >= 1.23 (for development)
+- Access to an Azure Naming Tool instance
+- Valid API credentials for the Azure Naming Tool
 
-## Building The Provider
+## Quick Start
 
-1. Clone the repository
-1. Enter the repository directory
-1. Build the provider using the Go `install` command:
+### 1. Configure the Provider
 
-```shell
-go install
+```hcl
+terraform {
+  required_providers {
+    proactnaming = {
+      source = "proact-global/proactnaming"
+      version = "~> 1.0"
+    }
+  }
+}
+
+provider "proactnaming" {
+  host           = "https://your-naming-tool.azurewebsites.net"
+  apikey         = var.naming_tool_apikey
+  admin_password = var.naming_tool_admin_password # Required for delete operations
+}
 ```
 
-## Adding Dependencies
+### 2. Generate Resource Names
 
-This provider uses [Go modules](https://github.com/golang/go/wiki/Modules).
-Please see the Go documentation for the most up to date information about using Go modules.
+```hcl
+resource "proactnaming_generate_name" "storage" {
+  organization  = "myorg"
+  resource_type = "st"
+  application   = "webapp"
+  function      = "data"
+  instance      = "001"
+  location      = "euw"
+  environment   = "prod"
+}
 
-To add a new dependency `github.com/author/dependency` to your Terraform provider:
-
-```shell
-go get github.com/author/dependency
-go mod tidy
+# Use the generated name in other resources
+resource "azurerm_storage_account" "example" {
+  name                = proactnaming_generate_name.storage.resource_name
+  resource_group_name = azurerm_resource_group.example.name
+  location            = azurerm_resource_group.example.location
+  # ... other configuration
+}
 ```
 
-Then commit the changes to `go.mod` and `go.sum`.
+### 3. Environment Variables (Alternative Configuration)
 
-## Using the provider
+```bash
+export PROACTNAMING_HOST="https://your-naming-tool.azurewebsites.net"
+export PROACTNAMING_APIKEY="your-api-key"
+export PROACTNAMING_ADMIN_PASSWORD="your-admin-password"
+```
 
-Fill this in for each provider
+## Provider Configuration
 
-## Developing the Provider
+| Argument | Type | Required | Description |
+|----------|------|----------|-------------|
+| `host` | string | Yes | Base URL of your Azure Naming Tool instance |
+| `apikey` | string | Yes | API key for authentication |
+| `admin_password` | string | No | Admin password for delete operations |
+
+## Resource: `proactnaming_generate_name`
+
+### Arguments
+
+| Argument | Type | Required | Description |
+|----------|------|----------|-------------|
+| `organization` | string | Yes | Organization identifier |
+| `resource_type` | string | Yes | Azure resource type (e.g., 'rg', 'st', 'vm') |
+| `application` | string | Yes | Application identifier |
+| `function` | string | No | Function or purpose identifier |
+| `instance` | string | Yes | Instance number or identifier |
+| `location` | string | Yes | Azure region identifier |
+| `environment` | string | Yes | Environment identifier |
+
+### Attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `id` | number | Unique identifier in Azure Naming Tool |
+| `resource_name` | string | Generated Azure resource name |
+| `success` | boolean | Whether generation was successful |
+| `message` | string | Message from the Azure Naming Tool |
+
+## Examples
+
+See the [examples](./examples/) directory for complete usage examples.
+
+## Development
+
+### Building the Provider
+
+```shell
+git clone https://github.com/proact-global/terraform-provider-proactnaming
+cd terraform-provider-proactnaming
+go build
+```
+
+### Running Tests
+
+```shell
+# Unit tests
+go test ./...
+
+# Acceptance tests (requires live Azure Naming Tool)
+TF_ACC=1 go test ./internal/provider -v
+```
+
+## Support
+
+For issues related to:
+- **Provider functionality**: Open an issue in this repository
+- **Azure Naming Tool**: Consult your Azure Naming Tool documentation
+- **Terraform core**: Visit [Terraform's documentation](https://www.terraform.io/docs)
+
+## License
+
+This provider is released under the [MIT License](LICENSE).
 
 If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
 

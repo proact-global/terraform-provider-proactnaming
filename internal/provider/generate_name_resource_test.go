@@ -2,6 +2,7 @@ package provider
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"testing"
 	"time"
@@ -11,7 +12,6 @@ import (
 
 func TestAccGenerateNameResource(t *testing.T) {
 	// Generate unique instance number using timestamp to avoid conflicts
-	// since the naming tool doesn't support deletion yet
 	timestamp := time.Now().Unix()
 	uniqueInstance := strconv.FormatInt(timestamp%1000, 10) // Use last 3 digits
 
@@ -21,26 +21,34 @@ func TestAccGenerateNameResource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testAccGenerateNameResourceConfig("man", "st", "app", "", uniqueInstance, "euw", "dev"),
+				Config: testAccGenerateNameResourceConfig("man", "st", "webapp", "test", uniqueInstance, "euw", "dev"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "organization", "man"),
 					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "resource_type", "st"),
-					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "application", "app"),
-					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "function", ""),
+					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "application", "webapp"),
+					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "function", "test"),
 					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "instance", uniqueInstance),
 					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "location", "euw"),
 					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "environment", "dev"),
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "id"),
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "resource_name"),
 					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "success", "true"),
+					// Verify the generated name follows expected pattern
+					resource.TestMatchResourceAttr("proactnaming_generate_name.test", "resource_name",
+						regexp.MustCompile(`^man-st-webapp.*-euw-dev$`)),
 				),
 			},
-			// Import testing (when import support is added)
-			// {
-			//     ResourceName:      "proactnaming_generate_name.test",
-			//     ImportState:       true,
-			//     ImportStateVerify: true,
-			// },
+			// Test replacement behavior by changing instance
+			{
+				Config: testAccGenerateNameResourceConfig("man", "st", "webapp", "test", "999", "euw", "dev"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "instance", "999"),
+					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "resource_name"),
+					// Verify the new name is different and follows pattern
+					resource.TestMatchResourceAttr("proactnaming_generate_name.test", "resource_name",
+						regexp.MustCompile(`^man-st-webapp.*999.*-euw-dev$`)),
+				),
+			},
 		},
 	})
 }
