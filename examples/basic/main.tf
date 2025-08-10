@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     proactnaming = {
-      source = "hashicorp.com/edu/proactnaming"
+      source = "proact-global/proactnaming"
     }
   }
 }
