@@ -1,7 +1,8 @@
 terraform {
   required_providers {
     proactnaming = {
-      source = "proact-global/proactnaming"
+      source  = "registry.terraform.io/proact-global/proactnaming"
+      version = "~> 1.0"
     }
   }
 }
@@ -9,18 +10,18 @@ terraform {
 # Configure the Proact Naming provider
 # Update these values with your Azure Naming Tool details
 provider "proactnaming" {
-  host           = "https://your-naming-tool.azurewebsites.net"
-  apikey         = "your-api-key"
-  admin_password = "your-admin-password" # Optional, only needed for delete operations
+  host           = "https://mangopato-namingtool.azurewebsites.net/"
+  apikey         = "6f510d50-ba62-40e1-a432-c3fc0a530483"
+  admin_password = "Pa$$w0rd!"
 }
 
 # Generate a resource group name
 resource "proactnaming_generate_name" "resource_group" {
-  organization  = "myorg"
+  organization  = "man"
   resource_type = "rg"
-  application   = "webapp"
+  application   = "app"
   function      = "api"
-  instance      = "001"
+  instance      = "002"
   location      = "euw"
   environment   = "dev"
 }

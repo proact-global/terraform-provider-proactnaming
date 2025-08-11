@@ -129,7 +129,8 @@ func (r *generateName) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	// Generate the name using the API
+	// Now we actually generate and persist the name during Create (apply phase)
+	// This creates the persistent entry in Azure Naming Tool
 	generateRequest := azurenamingtool.GenerateNameRequest{
 		ResourceOrg:         plan.Organization.ValueString(),
 		ResourceType:        plan.ResourceType.ValueString(),
@@ -155,7 +156,7 @@ func (r *generateName) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	// Set the generated values in state
+	// Set the generated values in state - this creates the persistent entry
 	plan.ID = types.Int64Value(generateResponse.ResourceNameDetails.ID)
 	plan.ResourceName = types.StringValue(generateResponse.ResourceName)
 	plan.Success = types.BoolValue(generateResponse.Success)
@@ -180,14 +181,54 @@ func (r *generateName) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
-	// For this resource, we don't need to fetch from a remote API since the name
-	// is generated once and stored in state. The Azure Naming Tool doesn't maintain
-	// persistent storage of generated names for retrieval.
+	// Generate the name if it hasn't been generated yet OR if we need to populate missing fields
+	// Check if ID is null - this indicates we need to create the persistent entry
+	if state.ID.IsNull() || state.ID.IsUnknown() {
+		// Generate the name using the API to create a persistent entry
+		generateRequest := azurenamingtool.GenerateNameRequest{
+			ResourceOrg:         state.Organization.ValueString(),
+			ResourceType:        state.ResourceType.ValueString(),
+			ResourceEnvironment: state.Environment.ValueString(),
+			ResourceFunction:    state.Function.ValueString(),
+			ResourceInstance:    state.Instance.ValueString(),
+			ResourceLocation:    state.Location.ValueString(),
+			CustomComponents: azurenamingtool.GenerateNameRequestCustomComponents{
+				Application: state.Application.ValueString(),
+			},
+		}
 
-	// We keep the generated entry in the Azure Naming Tool until explicit destroy
-	// This ensures we maintain the entry for the lifetime of the Terraform resource
-	// Only preview entries from ModifyPlan are cleaned up immediately
-} // Update updates the resource and sets the updated Terraform state on success.
+		generateResponse, err := r.client.GenerateName(generateRequest)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Generate Name",
+				fmt.Sprintf("An error occurred while generating the name: %s\n\n"+
+					"Please verify:\n"+
+					"- Azure Naming Tool is accessible at the configured host\n"+
+					"- API key has sufficient permissions\n"+
+					"- Input parameters match your naming tool configuration", err.Error()),
+			)
+			return
+		}
+
+		// Update the state with the generated values
+		state.ID = types.Int64Value(generateResponse.ResourceNameDetails.ID)
+		state.ResourceName = types.StringValue(generateResponse.ResourceName)
+		state.Success = types.BoolValue(generateResponse.Success)
+		state.Message = types.StringValue(generateResponse.Message)
+
+		// Save the updated state
+		diags = resp.State.Set(ctx, state)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	// If ID is already populated, we keep the existing generated name
+	// This ensures the name remains stable across reads unless explicitly regenerated
+}
+
+// Update updates the resource and sets the updated Terraform state on success.
 // Note: This function should not be called due to RequiresReplace plan modifiers
 // on all input attributes, but is implemented for completeness.
 func (r *generateName) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -241,14 +282,13 @@ func (r *generateName) Delete(ctx context.Context, req resource.DeleteRequest, r
 	// The resource is automatically removed from state when this function completes successfully
 }
 
-// ModifyPlan generates the name during planning to show what the new name will be
+// ModifyPlan generates a preview of the name during planning to show what the new name will be
 func (r *generateName) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	// Skip for destroy operations
 	if req.Plan.Raw.IsNull() {
 		return
 	}
 
-	// Only generate names for create operations (when state is null) or updates
 	var plan generateNameModel
 
 	// Get the planned configuration
@@ -270,72 +310,54 @@ func (r *generateName) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 		return
 	}
 
-	// Only update unknown computed values
-	shouldGenerate := false
-	if req.State.Raw.IsNull() {
-		// This is a create operation - generate if resource_name is unknown
-		shouldGenerate = plan.ResourceName.IsUnknown()
-	} else {
-		// This is an update/replace operation - only generate if there are changes to inputs
-		var state generateNameModel
-		diags := req.State.Get(ctx, &state)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
+	// Since names are now generated during Read, we'll generate a preview here
+	// to show users what the name will look like in the plan output
+	if plan.ResourceName.IsUnknown() {
+		// Generate a preview of the name using the API
+		generateRequest := azurenamingtool.GenerateNameRequest{
+			ResourceOrg:         plan.Organization.ValueString(),
+			ResourceType:        plan.ResourceType.ValueString(),
+			ResourceEnvironment: plan.Environment.ValueString(),
+			ResourceFunction:    plan.Function.ValueString(),
+			ResourceInstance:    plan.Instance.ValueString(),
+			ResourceLocation:    plan.Location.ValueString(),
+			CustomComponents: azurenamingtool.GenerateNameRequestCustomComponents{
+				Application: plan.Application.ValueString(),
+			},
+		}
+
+		generateResponse, err := r.client.GenerateName(generateRequest)
+		if err != nil {
+			// Fail the plan if we can't reach the API - this indicates a configuration problem
+			resp.Diagnostics.AddError(
+				"Unable to Generate Name Preview",
+				fmt.Sprintf("An error occurred while generating the name preview: %s\n\n"+
+					"Please verify:\n"+
+					"- Azure Naming Tool is accessible at the configured host\n"+
+					"- API key has sufficient permissions\n"+
+					"- Input parameters match your naming tool configuration", err.Error()),
+			)
 			return
 		}
 
-		// Check if any input has changed (which would trigger RequiresReplace)
-		inputChanged := !plan.Organization.Equal(state.Organization) ||
-			!plan.ResourceType.Equal(state.ResourceType) ||
-			!plan.Application.Equal(state.Application) ||
-			!plan.Function.Equal(state.Function) ||
-			!plan.Instance.Equal(state.Instance) ||
-			!plan.Location.Equal(state.Location) ||
-			!plan.Environment.Equal(state.Environment)
+		// Update the plan with the generated name preview
+		plan.ResourceName = types.StringValue(generateResponse.ResourceName)
+		// Note: We don't set other computed values here since this is just a preview
 
-		shouldGenerate = inputChanged && plan.ResourceName.IsUnknown()
-	}
-
-	if !shouldGenerate {
-		return
-	}
-
-	// Generate the name using the API
-	generateRequest := azurenamingtool.GenerateNameRequest{
-		ResourceOrg:         plan.Organization.ValueString(),
-		ResourceType:        plan.ResourceType.ValueString(),
-		ResourceEnvironment: plan.Environment.ValueString(),
-		ResourceFunction:    plan.Function.ValueString(),
-		ResourceInstance:    plan.Instance.ValueString(),
-		ResourceLocation:    plan.Location.ValueString(),
-		CustomComponents: azurenamingtool.GenerateNameRequestCustomComponents{
-			Application: plan.Application.ValueString(),
-		},
-	}
-
-	generateResponse, err := r.client.GenerateName(generateRequest)
-	if err != nil {
-		// Don't fail the plan, just skip showing the generated name
-		return
-	}
-
-	// Update the plan with the generated values to show in the plan output
-	plan.ResourceName = types.StringValue(generateResponse.ResourceName)
-	// Note: We don't set ID here since it might be different in the actual create
-
-	// Clean up the preview entry immediately to prevent accumulation in the tool
-	// This is a "preview" entry that shouldn't persist
-	if generateResponse.ResourceNameDetails.ID != 0 {
-		deleteRequest := azurenamingtool.DeleteGeneratedNameRequest{
-			ID: generateResponse.ResourceNameDetails.ID,
+		// Clean up the preview entry immediately to prevent accumulation in the tool
+		// This is a "preview" entry that shouldn't persist
+		if generateResponse.ResourceNameDetails.ID != 0 {
+			deleteRequest := azurenamingtool.DeleteGeneratedNameRequest{
+				ID: generateResponse.ResourceNameDetails.ID,
+			}
+			// Ignore errors - this is cleanup for preview entries
+			_, _ = r.client.DeleteName(deleteRequest)
 		}
-		// Ignore errors - this is cleanup for preview entries
-		_, _ = r.client.DeleteName(deleteRequest)
-	}
 
-	// Set the updated plan
-	diags = resp.Plan.Set(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+		// Set the updated plan with the preview name
+		diags = resp.Plan.Set(ctx, plan)
+		resp.Diagnostics.Append(diags...)
+	}
 }
 
 // Configure adds the provider configured client to the resource.
