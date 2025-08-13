@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 variable "naming_tool_host" {
   description = "The base URL for the Azure Naming Tool API"
   type        = string

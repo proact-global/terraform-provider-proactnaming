@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 # Infrastructure Resource Names
 output "infrastructure_names" {
   description = "Generated names for infrastructure resources"

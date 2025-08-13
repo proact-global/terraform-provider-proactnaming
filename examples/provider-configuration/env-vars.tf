@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 # Environment Variables Configuration Example
 # RECOMMENDED: This method keeps sensitive values out of your Terraform code
 

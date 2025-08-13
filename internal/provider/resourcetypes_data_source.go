@@ -1,3 +1,5 @@
+// Copyright (c) HashiCorp, Inc.
+
 package provider
 
 import (
@@ -62,67 +64,90 @@ func (d *resourceTypesDataSource) Metadata(_ context.Context, req datasource.Met
 // Schema defines the schema for the data source.
 func (d *resourceTypesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Retrieves all available resource types from the Azure Naming Tool.",
+		MarkdownDescription: "Retrieves all available resource types from the Azure Naming Tool. " +
+			"Use this data source to discover what resource types are supported by your naming tool configuration.",
 		Attributes: map[string]schema.Attribute{
 			"resource_types": schema.ListNestedAttribute{
-				Computed: true,
+				Description: "List of all available resource types.",
+				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.Int64Attribute{
-							Computed: true,
+							Description: "Unique identifier for the resource type.",
+							Computed:    true,
 						},
 						"resource": schema.StringAttribute{
-							Computed: true,
+							Description: "The Azure resource type name.",
+							Computed:    true,
 						},
 						"optional": schema.StringAttribute{
-							Computed: true,
+							Description: "Whether this resource type is optional.",
+							Computed:    true,
 						},
 						"exclude": schema.StringAttribute{
-							Computed: true,
+							Description: "Whether this resource type should be excluded.",
+							Computed:    true,
 						},
 						"property": schema.StringAttribute{
-							Computed: true,
+							Description: "Property configuration for the resource type.",
+							Computed:    true,
 						},
 						"short_name": schema.StringAttribute{
-							Computed: true,
+							Description: "Short name abbreviation for the resource type.",
+							Computed:    true,
 						},
 						"scope": schema.StringAttribute{
-							Computed: true,
+							Description: "Scope where this resource type can be used.",
+							Computed:    true,
 						},
 						"length_min": schema.StringAttribute{
-							Computed: true,
+							Description: "Minimum length allowed for this resource type.",
+							Computed:    true,
 						},
 						"length_max": schema.StringAttribute{
-							Computed: true,
+							Description: "Maximum length allowed for this resource type.",
+							Computed:    true,
 						},
 						"valid_text": schema.StringAttribute{
-							Computed: true,
+							Description: "Valid text patterns for this resource type.",
+							Computed:    true,
 						},
 						"invalid_text": schema.StringAttribute{
-							Computed: true,
+							Description: "Invalid text patterns for this resource type.",
+							Computed:    true,
 						},
 						"invalid_characters": schema.StringAttribute{
-							Computed: true,
+							Description: "Characters that are not allowed in this resource type.",
+							Computed:    true,
 						},
 						"invalid_characters_start": schema.StringAttribute{
-							Computed: true,
+							Description: "Characters that cannot appear at the start of the name.",
+							Computed:    true,
 						},
 						"invalid_characters_end": schema.StringAttribute{
-							Computed: true,
+							Description: "Characters that cannot appear at the end of the name.",
+							Computed:    true,
 						},
 						"invalid_characters_consecutive": schema.StringAttribute{
-							Computed: true,
+							Description: "Characters that cannot appear consecutively.",
+							Computed:    true,
 						},
 						"regx": schema.StringAttribute{
-							Computed: true,
+							Description: "Regular expression pattern for validation.",
+							Computed:    true,
 						},
 						"static_values": schema.StringAttribute{
-							Computed: true,
+							Description: "Static values that can be used for this resource type.",
+							Computed:    true,
 						},
 						"enabled": schema.BoolAttribute{
-							Computed: true,
+							Description: "Whether this resource type is enabled.",
+							Computed:    true,
 						},
 						"apply_delimiter": schema.BoolAttribute{
-							Computed: true,
+							Description: "Whether to apply delimiter rules to this resource type.",
+							Computed:    true,
 						},
 					},
 				},

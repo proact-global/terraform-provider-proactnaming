@@ -1,3 +1,5 @@
+// Copyright (c) HashiCorp, Inc.
+
 package provider
 
 import (
@@ -47,23 +49,30 @@ func (d *GeneratedNameDataSource) Metadata(_ context.Context, req datasource.Met
 // Schema defines the schema for the data source.
 func (d *GeneratedNameDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Retrieves details about a previously generated name from the Azure Naming Tool.",
+		MarkdownDescription: "Retrieves details about a previously generated name from the Azure Naming Tool. " +
+			"Use this data source to look up information about names that were generated using the naming tool.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.Int64Attribute{
 				Description: "The ID of the generated name data source.",
 				Required:    true,
 			},
 			"generated_name": schema.ListNestedAttribute{
-				Computed: true,
+				Description: "Details about the generated name.",
+				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.Int64Attribute{
-							Computed: true,
+							Description: "The unique identifier of the generated name.",
+							Computed:    true,
 						},
 						"resource_name": schema.StringAttribute{
-							Computed: true,
+							Description: "The generated resource name.",
+							Computed:    true,
 						},
 						"resource_type_name": schema.StringAttribute{
-							Computed: true,
+							Description: "The resource type name associated with the generated name.",
+							Computed:    true,
 						},
 					},
 				},

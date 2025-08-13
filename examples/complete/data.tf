@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 # Query available resource types from the Azure Naming Tool
 data "proactnaming_resourcetypes" "available" {}
 

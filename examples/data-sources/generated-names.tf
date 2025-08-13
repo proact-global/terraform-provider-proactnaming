@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 # Example of querying specific generated names by ID
 # Note: You need actual IDs from your Azure Naming Tool to use this data source
 

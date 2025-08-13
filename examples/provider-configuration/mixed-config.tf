@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 # Mixed Configuration Example
 # This approach allows overriding environment variables with Terraform variables
 

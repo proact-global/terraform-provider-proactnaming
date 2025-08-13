@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 # Direct Configuration Example
 # WARNING: This method exposes sensitive values in your Terraform code
 # Only use this for testing or when values are managed securely

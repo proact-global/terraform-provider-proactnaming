@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 # Data source outputs
 output "all_resource_types" {
   description = "List of all available resource types"
