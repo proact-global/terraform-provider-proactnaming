@@ -11,7 +11,7 @@ import (
 )
 
 func TestAccGenerateNameResource(t *testing.T) {
-	// Generate unique instance number using timestamp to avoid conflicts
+	// Generate unique instance number using timestamp to avoid conflicts.
 	timestamp := time.Now().Unix()
 	uniqueInstance := strconv.FormatInt(timestamp%1000, 10) // Use last 3 digits
 
@@ -19,7 +19,7 @@ func TestAccGenerateNameResource(t *testing.T) {
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
-			// Create and Read testing
+			// Create and Read testing.
 			{
 				Config: testAccGenerateNameResourceConfig("man", "st", "webapp", "test", uniqueInstance, "euw", "dev"),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -33,18 +33,18 @@ func TestAccGenerateNameResource(t *testing.T) {
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "id"),
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "resource_name"),
 					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "success", "true"),
-					// Verify the generated name follows expected pattern
+					// Verify the generated name follows expected pattern.
 					resource.TestMatchResourceAttr("proactnaming_generate_name.test", "resource_name",
 						regexp.MustCompile(`^man-st-webapp.*-euw-dev$`)),
 				),
 			},
-			// Test replacement behavior by changing instance
+			// Test replacement behavior by changing instance.
 			{
 				Config: testAccGenerateNameResourceConfig("man", "st", "webapp", "test", "999", "euw", "dev"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "instance", "999"),
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "resource_name"),
-					// Verify the new name is different and follows pattern
+					// Verify the new name is different and follows pattern.
 					resource.TestMatchResourceAttr("proactnaming_generate_name.test", "resource_name",
 						regexp.MustCompile(`^man-st-webapp.*999.*-euw-dev$`)),
 				),
@@ -53,9 +53,9 @@ func TestAccGenerateNameResource(t *testing.T) {
 	})
 }
 
-// TestAccGenerateNameResource_UniqueNames tests that different configurations generate different names
+// TestAccGenerateNameResource_UniqueNames tests that different configurations generate different names.
 func TestAccGenerateNameResource_UniqueNames(t *testing.T) {
-	// Skip this test as it would create multiple resources without cleanup
+	// Skip this test as it would create multiple resources without cleanup.
 	t.Skip("Skipping multiple resource test until delete functionality is available. " +
 		"This test would create multiple resources in the naming tool without ability to clean them up.")
 }

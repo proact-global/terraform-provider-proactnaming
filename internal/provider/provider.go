@@ -31,8 +31,8 @@ func New(version string) func() provider.Provider {
 
 // proactnamingProvider is the provider implementation.
 type proactnamingProvider struct {
-	// version is set to the provider version on release, "dev" when the
-	// provider is built and ran locally, and "test" when running acceptance
+	// version is set to the provider version on release, "dev" when the.
+	// provider is built and ran locally, and "test" when running acceptance.
 	// testing.
 	version string
 }
@@ -82,7 +82,7 @@ func (p *proactnamingProvider) Schema(_ context.Context, _ provider.SchemaReques
 }
 
 func (p *proactnamingProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	// Retrieve provider data from configuration
+	// Retrieve provider data from configuration.
 	var config proactnamingProviderModel
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
@@ -90,7 +90,7 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	// If practitioner provided a configuration value for any of the
+	// If practitioner provided a configuration value for any of the.
 	// attributes, it must be a known value.
 
 	if config.Host.IsUnknown() {
@@ -124,7 +124,7 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	// Default values to environment variables, but override
+	// Default values to environment variables, but override.
 	// with Terraform configuration value if set.
 
 	host := os.Getenv("PROACTNAMING_HOST")
@@ -143,7 +143,7 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 		adminpassword = config.AdminPassword.ValueString()
 	}
 
-	// If any of the expected configurations are missing, return
+	// If any of the expected configurations are missing, return.
 	// errors with provider-specific guidance.
 
 	if host == "" {
@@ -170,10 +170,10 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	// Create a new proactnaming client using the configuration values
+	// Create a new proactnaming client using the configuration values.
 	client, err := azurenamingtool.NewClient(&host, &apikey, &adminpassword)
 	if err != nil {
-		// Enhanced error handling for client creation
+		// Enhanced error handling for client creation.
 		if strings.Contains(err.Error(), "invalid host") || strings.Contains(err.Error(), "malformed") {
 			resp.Diagnostics.AddError(
 				"Invalid Host Configuration",
@@ -197,7 +197,7 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	// Make the proactnaming client available during DataSource and Resource
+	// Make the proactnaming client available during DataSource and Resource.
 	// type Configure methods.
 	resp.DataSourceData = client
 	resp.ResourceData = client

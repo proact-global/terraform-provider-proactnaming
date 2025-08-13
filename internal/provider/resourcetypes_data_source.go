@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-  "github.com/proact-global/azurenamingtool-client-go"
+	"github.com/proact-global/azurenamingtool-client-go"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -144,7 +144,7 @@ func (d *resourceTypesDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
-	// Map response body to model
+	// Map response body to model.
 	for _, resource_types := range resourceTypes {
 		resourceTypestate := resourceTypesModel{
 			ID:                           types.Int64Value(int64(resource_types.ID)),
@@ -170,7 +170,7 @@ func (d *resourceTypesDataSource) Read(ctx context.Context, req datasource.ReadR
 		state.ResourceTypes = append(state.ResourceTypes, resourceTypestate)
 	}
 
-	// Set state
+	// Set state.
 	diags := resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -180,7 +180,7 @@ func (d *resourceTypesDataSource) Read(ctx context.Context, req datasource.ReadR
 
 // Configure adds the provider configured client to the data source.
 func (d *resourceTypesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	// Add a nil check when handling ProviderData because Terraform
+	// Add a nil check when handling ProviderData because Terraform.
 	// sets that data after it calls the ConfigureProvider RPC.
 	if req.ProviderData == nil {
 		return

@@ -76,7 +76,7 @@ func (d *GeneratedNameDataSource) Schema(_ context.Context, _ datasource.SchemaR
 func (d *GeneratedNameDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state GeneratedNameDataSourceModel
 
-	// Read config to get the ID
+	// Read config to get the ID.
 	diags := req.Config.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -95,18 +95,18 @@ func (d *GeneratedNameDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
-	// Map response body to model
+	// Map response body to model.
 	state.GeneratedName = nil // reset before appending
 	if generatedName != nil {
 		generatedNameState := GeneratedNameModel{
-			ID:               types.Int64Value(int64(generatedName.ID)),
+			ID:               types.Int64Value(generatedName.ID),
 			ResourceName:     types.StringValue(generatedName.ResourceName),
 			ResourceTypeName: types.StringValue(generatedName.ResourceTypeName),
 		}
 		state.GeneratedName = append(state.GeneratedName, generatedNameState)
 	}
 
-	// Set state
+	// Set state.
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -116,7 +116,7 @@ func (d *GeneratedNameDataSource) Read(ctx context.Context, req datasource.ReadR
 
 // Configure adds the provider configured client to the data source.
 func (d *GeneratedNameDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	// Add a nil check when handling ProviderData because Terraform
+	// Add a nil check when handling ProviderData because Terraform.
 	// sets that data after it calls the ConfigureProvider RPC.
 	if req.ProviderData == nil {
 		return

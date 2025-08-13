@@ -38,12 +38,12 @@ func (v stringLengthValidator) ValidateString(ctx context.Context, request valid
 	}
 }
 
-// StringLength returns a validator which ensures that any configured attribute value
+// StringLength returns a validator which ensures that any configured attribute value.
 // has a length between the given minimum and maximum values.
-func StringLength(min, max int) validator.String {
+func StringLength(minLength, maxLength int) validator.String {
 	return stringLengthValidator{
-		min: min,
-		max: max,
+		min: minLength,
+		max: maxLength,
 	}
 }
 
@@ -76,7 +76,7 @@ func (v stringPatternValidator) ValidateString(ctx context.Context, request vali
 	}
 }
 
-// StringPattern returns a validator which ensures that any configured attribute value
+// StringPattern returns a validator which ensures that any configured attribute value.
 // matches the given regular expression pattern.
 func StringPattern(pattern string, message string) validator.String {
 	return stringPatternValidator{
@@ -111,7 +111,7 @@ func (v stringNotEmptyValidator) ValidateString(ctx context.Context, request val
 	}
 }
 
-// StringNotEmpty returns a validator which ensures that any configured attribute value
+// StringNotEmpty returns a validator which ensures that any configured attribute value.
 // is not an empty string or contains only whitespace.
 func StringNotEmpty() validator.String {
 	return stringNotEmptyValidator{}
