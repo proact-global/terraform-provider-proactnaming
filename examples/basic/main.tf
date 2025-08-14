@@ -12,20 +12,20 @@ terraform {
 # Configure the Proact Naming provider
 # Update these values with your Azure Naming Tool details
 provider "proactnaming" {
-  host           = "https://mangopato-namingtool.azurewebsites.net/"
-  apikey         = "6f510d50-ba62-40e1-a432-c3fc0a530483"
-  admin_password = "Pa$$w0rd!"
+  host           = "https://your-naming-tool.azurewebsites.net"
+  apikey         = "your-api-key-here"
+  admin_password = "your-admin-password" # Only required for delete operations
 }
 
 # Generate a resource group name
 resource "proactnaming_generate_name" "resource_group" {
-  organization  = "man"
-  resource_type = "rg"
-  application   = "app"
-  function      = "api"
-  instance      = "002"
-  location      = "euw"
-  environment   = "dev"
+  organization  = "myorg"  # Your organization code
+  resource_type = "rg"     # Resource group
+  application   = "webapp" # Application name
+  function      = "api"    # Function/purpose
+  instance      = "001"    # Instance number
+  location      = "euw"    # Europe West
+  environment   = "dev"    # Development environment
 }
 
 # Output the generated name for use in other resources
@@ -35,7 +35,13 @@ output "resource_group_name" {
 }
 
 # Example: Use the generated name in an Azure resource group
+# Uncomment and configure the AzureRM provider to use this
 # resource "azurerm_resource_group" "main" {
 #   name     = proactnaming_generate_name.resource_group.resource_name
 #   location = "West Europe"
+#   
+#   tags = {
+#     Environment = "dev"
+#     Application = "webapp"
+#   }
 # }

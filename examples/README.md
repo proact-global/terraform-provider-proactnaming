@@ -6,6 +6,9 @@ This directory contains examples demonstrating how to use the Proact Naming Terr
 
 ### 🚀 [basic/](./basic/)
 Simple example showing basic resource name generation with minimal configuration.
+- Single resource group name generation
+- Basic provider configuration
+- Output usage demonstration
 
 ### 🏢 [complete/](./complete/)
 Comprehensive example demonstrating all features including:
@@ -14,18 +17,28 @@ Comprehensive example demonstrating all features including:
 - Data sources usage
 - Output formatting
 
+### 🏗️ [complete-infrastructure/](./complete-infrastructure/)
+Full Azure infrastructure deployment example with:
+- Multi-tier architecture (web, app, database)
+- Multiple environments with different configurations
+- Virtual machines with scaling
+- Networking components (VNet, subnets, NSGs)
+- Storage accounts and SQL databases
+- Environment-specific resource sizing
+- Comprehensive tagging strategy
+
 ### 🔧 [provider-configuration/](./provider-configuration/)
 Examples of different provider configuration methods:
-- Using environment variables
-- Direct configuration
+- Using environment variables (recommended)
+- Direct configuration (for testing)
 - Mixed approaches
 
 ### 📊 [data-sources/](./data-sources/)
 Examples using the provider's data sources:
 - Querying available resource types
-- Filtering resource types by criteria
+- Filtering and validation logic
 - Looking up existing generated names
-- Using data sources for validation
+- Dynamic resource creation based on availability
 
 ## Prerequisites
 

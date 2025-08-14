@@ -24,10 +24,10 @@ provider "proactnaming" {
 
 # Simple example resource
 resource "proactnaming_generate_name" "example" {
-  organization  = "test"
+  organization  = "myorg"
   resource_type = "rg"
-  application   = "demo"
-  function      = "api"
+  application   = "webapp"
+  function      = "core"
   instance      = "001"
   location      = "euw"
   environment   = "dev"

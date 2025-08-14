@@ -1,0 +1,30 @@
+# Example Terraform variables
+# Copy this file to terraform.tfvars and update with your values
+
+# Organization and Application
+organization = "myorg"
+application  = "webapp"
+
+# Location and Environment
+location     = "euw"        # Azure region code for naming
+azure_region = "West Europe" # Full Azure region name
+environment  = "dev"        # dev, test, stage, prod
+
+# Virtual Machine Configuration
+worker_vm_count = 2
+worker_vm_size  = "Standard_B2s"
+
+# Database Configuration
+sql_admin_username = "sqladmin"
+sql_admin_password = "MySecurePassword123!" # Use a strong password
+
+# SSH Key for VMs (paste your public key here)
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC... your-email@domain.com"
+
+# Additional Tags
+project_tags = {
+  "Project"     = "My Web Application"
+  "Owner"       = "Development Team"
+  "CostCenter"  = "Engineering"
+  "Environment" = "Development"
+}
