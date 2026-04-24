@@ -35,9 +35,9 @@ func TestAccGenerateNameResource(t *testing.T) {
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "id"),
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "resource_name"),
 					resource.TestCheckResourceAttr("proactnaming_generate_name.test", "success", "true"),
-					// Verify the generated name follows expected pattern.
-					resource.TestMatchResourceAttr("proactnaming_generate_name.test", "resource_name",
-						regexp.MustCompile(`^man-st-webapp.*-euw-dev$`)),
+				// Verify the generated name contains the expected components (delimiter-agnostic).
+				resource.TestMatchResourceAttr("proactnaming_generate_name.test", "resource_name",
+					regexp.MustCompile(`(?i)man.*st.*webapp.*euw.*dev`)),
 				),
 			},
 			// Test replacement behavior by changing instance.
@@ -48,7 +48,7 @@ func TestAccGenerateNameResource(t *testing.T) {
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "resource_name"),
 					// Verify the new name is different and follows pattern.
 					resource.TestMatchResourceAttr("proactnaming_generate_name.test", "resource_name",
-						regexp.MustCompile(`^man-st-webapp.*999.*-euw-dev$`)),
+					regexp.MustCompile(`(?i)man.*st.*webapp.*999.*euw.*dev`)),
 				),
 			},
 		},

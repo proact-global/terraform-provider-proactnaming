@@ -47,9 +47,9 @@ resource "proactnaming_generate_name" "virtual_network" {
 }
 
 # Compute Resources
-resource "proactnaming_generate_name" "virtual_machine" {
+resource "proactnaming_generate_name" "kubernetes_cluster" {
   organization  = var.organization
-  resource_type = "vm"
+  resource_type = "aks"
   application   = var.application
   function      = "web"
   instance      = "001"
@@ -57,9 +57,9 @@ resource "proactnaming_generate_name" "virtual_machine" {
   environment   = var.environment
 }
 
-resource "proactnaming_generate_name" "app_service" {
+resource "proactnaming_generate_name" "function_app" {
   organization  = var.organization
-  resource_type = "app"
+  resource_type = "func"
   application   = var.application
   function      = "api"
   instance      = "001"
@@ -90,13 +90,13 @@ resource "proactnaming_generate_name" "log_analytics" {
 }
 
 # Multi-instance examples
-resource "proactnaming_generate_name" "vm_web_nodes" {
+resource "proactnaming_generate_name" "key_vaults" {
   count = 3
 
   organization  = var.organization
-  resource_type = "vm"
+  resource_type = "kv"
   application   = var.application
-  function      = "web"
+  function      = "sec"
   instance      = format("%03d", count.index + 1)
   location      = var.location
   environment   = var.environment

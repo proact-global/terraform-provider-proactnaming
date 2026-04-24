@@ -14,8 +14,8 @@ output "infrastructure_names" {
 output "compute_names" {
   description = "Generated names for compute resources"
   value = {
-    virtual_machine = proactnaming_generate_name.virtual_machine.resource_name
-    app_service     = proactnaming_generate_name.app_service.resource_name
+    kubernetes_cluster = proactnaming_generate_name.kubernetes_cluster.resource_name
+    function_app       = proactnaming_generate_name.function_app.resource_name
   }
 }
 
@@ -36,11 +36,9 @@ output "monitoring_names" {
 }
 
 # Multi-instance Resource Names
-output "web_node_names" {
-  description = "Generated names for web node VMs"
-  value = [
-    for vm in proactnaming_generate_name.vm_web_nodes : vm.resource_name
-  ]
+output "key_vault_names" {
+  description = "Generated names for key vaults"
+  value       = [for kv in proactnaming_generate_name.key_vaults : kv.resource_name]
 }
 
 # All Generated Names (for easy reference)
@@ -53,9 +51,9 @@ output "all_resource_names" {
       virtual_network = proactnaming_generate_name.virtual_network.resource_name
     }
     compute = {
-      virtual_machine = proactnaming_generate_name.virtual_machine.resource_name
-      app_service     = proactnaming_generate_name.app_service.resource_name
-      web_nodes       = [for vm in proactnaming_generate_name.vm_web_nodes : vm.resource_name]
+      kubernetes_cluster = proactnaming_generate_name.kubernetes_cluster.resource_name
+      function_app       = proactnaming_generate_name.function_app.resource_name
+      key_vaults         = [for kv in proactnaming_generate_name.key_vaults : kv.resource_name]
     }
     database = {
       sql_server = proactnaming_generate_name.sql_server.resource_name

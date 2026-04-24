@@ -63,3 +63,5 @@ require (
 	google.golang.org/grpc v1.72.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )
+
+replace github.com/proact-global/azurenamingtool-client-go => ../azurenamingtool-client-go

@@ -93,9 +93,8 @@ func (d *GeneratedNameDataSource) Read(ctx context.Context, req datasource.ReadR
 	}
 
 	id := state.ID.ValueInt64()
-	id16 := int16(id)
 
-	generatedName, err := d.client.GetName(id16)
+	generatedName, err := d.client.GetName(id)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Read azurenamingtool generated_name",

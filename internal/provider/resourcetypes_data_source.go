@@ -54,6 +54,7 @@ type resourceTypesModel struct {
 	StaticValues                 types.String `tfsdk:"static_values"`
 	Enabled                      bool         `tfsdk:"enabled"`
 	ApplyDelimiter               bool         `tfsdk:"apply_delimiter"`
+	AzurermResourceType          types.String `tfsdk:"azurerm_resource_type"`
 }
 
 // Metadata returns the data source type name.
@@ -149,6 +150,10 @@ func (d *resourceTypesDataSource) Schema(_ context.Context, _ datasource.SchemaR
 							Description: "Whether to apply delimiter rules to this resource type.",
 							Computed:    true,
 						},
+						"azurerm_resource_type": schema.StringAttribute{
+							Description: "Comma-separated azurerm Terraform provider resource type name(s) corresponding to this resource type. Empty if no mapping is known.",
+							Computed:    true,
+						},
 					},
 				},
 			},
@@ -191,6 +196,7 @@ func (d *resourceTypesDataSource) Read(ctx context.Context, req datasource.ReadR
 			StaticValues:                 types.StringValue(resource_types.StaticValues),
 			Enabled:                      resource_types.Enabled,
 			ApplyDelimiter:               resource_types.ApplyDelimiter,
+			AzurermResourceType:          types.StringValue(getAzurermResourceType(resource_types.Resource, resource_types.Property)),
 		}
 		state.ResourceTypes = append(state.ResourceTypes, resourceTypestate)
 	}
