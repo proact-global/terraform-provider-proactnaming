@@ -13,17 +13,16 @@ linters:
     - makezero
     - misspell
     - nilerr
-  settings:
-    misspell:
-      extra-words:
-        - typo: hdinsight
-          correction: hdinsight
     - predeclared
     - staticcheck
     - unconvert
     - unparam
     - unused
     - usetesting
+  settings:
+    misspell:
+      ignore-words:
+        - hdinsight
   exclusions:
     generated: lax
     presets:
