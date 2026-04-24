@@ -6,7 +6,7 @@ require (
 	github.com/hashicorp/terraform-plugin-framework v1.15.1
 	github.com/hashicorp/terraform-plugin-go v0.28.0
 	github.com/hashicorp/terraform-plugin-testing v1.13.2
-	github.com/proact-global/azurenamingtool-client-go v0.6.3
+	github.com/proact-global/azurenamingtool-client-go v0.7.0
 )
 
 require (
@@ -63,5 +63,3 @@ require (
 	google.golang.org/grpc v1.72.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )
-
-replace github.com/proact-global/azurenamingtool-client-go => ../azurenamingtool-client-go
