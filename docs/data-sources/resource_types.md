@@ -143,6 +143,7 @@ resource "proactnaming_generate_name" "aks" {
 Read-Only:
 
 - `apply_delimiter` (Boolean) Whether to apply delimiter rules to this resource type.
+- `azurerm_resource_type` (String) Comma-separated azurerm Terraform provider resource type name(s) corresponding to this resource type. Empty if no mapping is known.
 - `enabled` (Boolean) Whether this resource type is enabled.
 - `exclude` (String) Whether this resource type should be excluded.
 - `id` (Number) Unique identifier for the resource type.
@@ -161,4 +162,3 @@ Read-Only:
 - `short_name` (String) Short name abbreviation for the resource type.
 - `static_values` (String) Static values that can be used for this resource type.
 - `valid_text` (String) Valid text patterns for this resource type.
-- `azurerm_resource_type` (String) Comma-separated azurerm Terraform provider resource type name(s) corresponding to this resource type. Empty if no mapping is known.
