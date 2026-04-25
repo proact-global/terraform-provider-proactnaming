@@ -19,10 +19,6 @@ linters:
     - unparam
     - unused
     - usetesting
-  settings:
-    misspell:
-      ignore-words:
-        - hdinsight
   exclusions:
     generated: lax
     presets:
@@ -30,6 +26,10 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
+    rules:
+      - linters:
+          - misspell
+        path: internal/provider/azurerm_mappings\.go
     paths:
       - third_party$
       - builtin$
