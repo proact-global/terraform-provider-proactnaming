@@ -12,6 +12,11 @@ lint:
 generate:
 	cd tools; go generate ./...
 
+# generate-mappings fetches the latest aztft map.json and regenerates
+# internal/provider/azurerm_mappings.go. Requires network access.
+generate-mappings:
+	go run tools/gen_azurerm_mappings.go
+
 fmt:
 	gofmt -s -w -e .
 
@@ -21,4 +26,4 @@ test:
 testacc:
 	TF_ACC=1 go test -v -cover -timeout 120m ./...
 
-.PHONY: fmt lint test testacc build install generate
+.PHONY: fmt lint test testacc build install generate generate-mappings

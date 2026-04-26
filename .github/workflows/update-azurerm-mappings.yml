@@ -1,0 +1,67 @@
+name: Update azurerm Mappings
+
+# Fetches the latest aztft map.json, regenerates internal/provider/azurerm_mappings.go,
+# and opens a pull request if anything changed.
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # Every Monday at 08:00 UTC
+  workflow_dispatch:       # Allow manual triggers
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-mappings:
+    name: Regenerate azurerm_mappings.go
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Run azurerm mappings generator
+        run: go run tools/gen_azurerm_mappings.go
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet internal/provider/azurerm_mappings.go; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes detected — mappings are already up to date."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Changes detected in azurerm_mappings.go:"
+            git diff --stat internal/provider/azurerm_mappings.go
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: regenerate azurerm_mappings.go from aztft map.json"
+          title: "chore: update azurerm resource type mappings"
+          body: |
+            Automated update of `internal/provider/azurerm_mappings.go` from the latest
+            [aztft map.json](https://github.com/magodo/aztft/blob/main/internal/resmap/map.json).
+
+            This PR was created automatically by the
+            [Update azurerm Mappings](.github/workflows/update-azurerm-mappings.yml) workflow.
+
+            **Please review the diff before merging**, paying attention to:
+            - New azurerm resource types added to the provider
+            - Deprecated/removed resources (marked `is_removed` in aztft and excluded from output)
+            - Multiple azurerm resources sharing one ARM type (e.g. Linux vs Windows VMs)
+            - Edge cases where the aztft key differs from what the Azure Naming Tool returns
+
+            To regenerate locally: `make generate-mappings`
+          branch: chore/update-azurerm-mappings
+          delete-branch: true
+          labels: |
+            automated
+            dependencies
