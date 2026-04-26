@@ -104,6 +104,8 @@ output "generated_names" {
 
 Use `azurerm_resource_type` to find the short name for a resource type you already know from the AzureRM Terraform provider.
 
+> **Tip:** For the common case of simply mapping an azurerm resource type to a short name, consider using the [`proactnaming_azurerm_resources`](azurerm_resources.md) data source instead — it returns a ready-to-use `map(string)` with no local transformations needed.
+
 ```terraform
 data "proactnaming_resource_types" "all" {}
 
