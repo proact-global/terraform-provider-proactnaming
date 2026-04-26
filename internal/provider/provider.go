@@ -210,6 +210,7 @@ func (p *proactnamingProvider) DataSources(_ context.Context) []func() datasourc
 	return []func() datasource.DataSource{
 		NewresourceTypesDataSource,
 		NewGeneratedNameDataSource,
+		NewAzurermResourcesDataSource,
 	}
 }
 
