@@ -1,3 +1,5 @@
+// Copyright (c) HashiCorp, Inc.
+
 //go:build ignore
 
 // gen_azurerm_mappings.go generates internal/provider/azurerm_mappings.go by

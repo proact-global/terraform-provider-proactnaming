@@ -29,7 +29,6 @@ provider "proactnaming" {
   # export PROACTNAMING_HOST="https://your-naming-tool.azurewebsites.net"
   # export PROACTNAMING_APIKEY="your-api-key"
   # export PROACTNAMING_ADMIN_PASSWORD="your-admin-password"  # Optional
-  # export PROACTNAMING_ADMIN_PASSWORD="your-admin-password"  # Optional
 }
 
 # Generate a resource group name
@@ -52,24 +51,6 @@ resource "azurerm_resource_group" "main" {
     Environment = "dev"
     Application = "webapp"
   }
-}
-```
-
-### Use azurerm Resource Types Directly
-
-The `proactnaming_azurerm_resources` data source provides a ready-made map from azurerm resource types to short names, so you never need to look up or hardcode short name values.
-
-```terraform
-data "proactnaming_azurerm_resources" "mapping" {}
-
-resource "proactnaming_generate_name" "storage" {
-  organization  = "myorg"
-  resource_type = data.proactnaming_azurerm_resources.mapping.resources["azurerm_storage_account"]
-  application   = "webapp"
-  function      = "data"
-  instance      = "001"
-  location      = "euw"
-  environment   = "dev"
 }
 ```
 
