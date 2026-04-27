@@ -164,19 +164,28 @@ func buildReverseMap(data map[string]ResourceEntry) (
 //
 // Examples:
 //
-//	("Microsoft.Compute",        ["virtualMachines"])           → "compute/virtualmachines"
-//	("Microsoft.EventHub",       ["namespaces", "eventhubs"])   → "eventhub/namespaces/eventhubs"
-//	("Microsoft.ApiManagement",  ["service"])                   → "apimanagement/service"
-//	("Nginx.NginxPlus",          ["nginxDeployments"])          → "nginx.nginxplus/nginxdeployments"
+//	("Microsoft.Compute",        ["virtualMachines"])             → "compute/virtualmachines"
+//	("Microsoft.EventHub",       ["namespaces", "eventhubs"])     → "eventhub/namespaces/eventhubs"
+//	("Microsoft.ApiManagement",  ["service"])                     → "apimanagement/service"
+//	("Nginx.NginxPlus",          ["nginxDeployments"])            → "nginx.nginxplus/nginxdeployments"
+//	("Microsoft.Resources",      ["subscriptions", "resourceGroups"]) → "resources/resourcegroups"
+//
+// Note: a leading "subscriptions" type is stripped because it is a subscription-scope
+// qualifier in the ARM REST path that the Azure Naming Tool does not include in its keys.
 func buildKey(provider string, types []string) string {
 	ns := provider
 	if strings.HasPrefix(strings.ToLower(ns), "microsoft.") {
 		ns = ns[len("Microsoft."):]
 	}
 
-	parts := make([]string, 0, 1+len(types))
+	filtered := types
+	if len(filtered) > 1 && strings.EqualFold(filtered[0], "subscriptions") {
+		filtered = filtered[1:]
+	}
+
+	parts := make([]string, 0, 1+len(filtered))
 	parts = append(parts, ns)
-	parts = append(parts, types...)
+	parts = append(parts, filtered...)
 
 	return strings.ToLower(strings.Join(parts, "/"))
 }
