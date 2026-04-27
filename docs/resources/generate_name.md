@@ -145,6 +145,7 @@ resource "proactnaming_generate_name" "example" {
 
 ### Optional
 
+- `custom_component` (Block List) Additional custom naming components required by certain resource types (e.g. subnet_tier, subnet_instance for subnets). Each block specifies a component name and its short-name value. Use multiple blocks — or a `dynamic` block — when a resource requires more than one custom component. (see [below for nested schema](#nestedblock--custom_component))
 - `function` (String) Function or purpose identifier for the resource name.
 
 ### Read-Only
@@ -153,3 +154,11 @@ resource "proactnaming_generate_name" "example" {
 - `message` (String) Message from the Azure Naming Tool API.
 - `resource_name` (String) The generated Azure resource name.
 - `success` (Boolean) Indicates whether the name generation was successful.
+
+<a id="nestedblock--custom_component"></a>
+### Nested Schema for `custom_component`
+
+Required:
+
+- `name` (String) Custom component name as defined in the Azure Naming Tool (e.g. 'subnet_tier', 'subnet_instance').
+- `value` (String) Short-name value for the custom component (e.g. 'app', 'web', '01').

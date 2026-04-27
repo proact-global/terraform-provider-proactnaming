@@ -101,3 +101,48 @@ resource "proactnaming_generate_name" "key_vaults" {
   location      = var.location
   environment   = var.environment
 }
+
+# Subnet with custom components (subnet_tier and subnet_instance)
+resource "proactnaming_generate_name" "subnet_app" {
+  organization  = var.organization
+  resource_type = "snet"
+  application   = var.application
+  instance      = "001"
+  location      = var.location
+  environment   = var.environment
+
+  custom_component {
+    name  = "subnet_tier"
+    value = "app"
+  }
+
+  custom_component {
+    name  = "subnet_instance"
+    value = "001"
+  }
+}
+
+# Subnet using a dynamic block (useful when tiers are driven by a variable)
+locals {
+  subnet_tiers = [
+    { name = "subnet_tier", value = "web" },
+    { name = "subnet_instance", value = "001" },
+  ]
+}
+
+resource "proactnaming_generate_name" "subnet_web" {
+  organization  = var.organization
+  resource_type = "snet"
+  application   = var.application
+  instance      = "001"
+  location      = var.location
+  environment   = var.environment
+
+  dynamic "custom_component" {
+    for_each = local.subnet_tiers
+    content {
+      name  = custom_component.value.name
+      value = custom_component.value.value
+    }
+  }
+}

@@ -31,22 +31,44 @@ type generateName struct {
 	client *azurenamingtool.Client
 }
 
+// customComponentModel maps a single custom_component block.
+type customComponentModel struct {
+	Name  types.String `tfsdk:"name"`
+	Value types.String `tfsdk:"value"`
+}
+
 // generateNameModel maps the resource schema data.
 type generateNameModel struct {
 	// Input fields for name generation.
-	Organization types.String `tfsdk:"organization"`
-	ResourceType types.String `tfsdk:"resource_type"`
-	Application  types.String `tfsdk:"application"`
-	Function     types.String `tfsdk:"function"`
-	Instance     types.String `tfsdk:"instance"`
-	Location     types.String `tfsdk:"location"`
-	Environment  types.String `tfsdk:"environment"`
+	Organization     types.String           `tfsdk:"organization"`
+	ResourceType     types.String           `tfsdk:"resource_type"`
+	Application      types.String           `tfsdk:"application"`
+	Function         types.String           `tfsdk:"function"`
+	Instance         types.String           `tfsdk:"instance"`
+	Location         types.String           `tfsdk:"location"`
+	Environment      types.String           `tfsdk:"environment"`
+	CustomComponents []customComponentModel `tfsdk:"custom_component"`
 
 	// Output fields from the API.
 	ID           types.Int64  `tfsdk:"id"`
 	ResourceName types.String `tfsdk:"resource_name"`
 	Success      types.Bool   `tfsdk:"success"`
 	Message      types.String `tfsdk:"message"`
+}
+
+// buildCustomComponents converts the model's custom_component blocks and the
+// application field into the map expected by the API client.
+func (m *generateNameModel) buildCustomComponents() azurenamingtool.GenerateNameRequestCustomComponents {
+	cc := make(azurenamingtool.GenerateNameRequestCustomComponents)
+	if !m.Application.IsNull() && !m.Application.IsUnknown() {
+		cc["application"] = m.Application.ValueString()
+	}
+	for _, c := range m.CustomComponents {
+		if !c.Name.IsNull() && !c.Name.IsUnknown() && !c.Value.IsNull() && !c.Value.IsUnknown() {
+			cc[c.Name.ValueString()] = c.Value.ValueString()
+		}
+	}
+	return cc
 }
 
 // Metadata returns the resource type name.
@@ -117,6 +139,27 @@ func (r *generateName) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				Computed:    true,
 			},
 		},
+		Blocks: map[string]schema.Block{
+			"custom_component": schema.ListNestedBlock{
+				Description: "Additional custom naming components required by certain resource types (e.g. subnet_tier, subnet_instance for subnets). " +
+					"Each block specifies a component name and its short-name value. " +
+					"Use multiple blocks — or a `dynamic` block — when a resource requires more than one custom component.",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"name": schema.StringAttribute{
+							Description:   "Custom component name as defined in the Azure Naming Tool (e.g. 'subnet_tier', 'subnet_instance').",
+							Required:      true,
+							PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						},
+						"value": schema.StringAttribute{
+							Description:   "Short-name value for the custom component (e.g. 'app', 'web', '01').",
+							Required:      true,
+							PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -140,9 +183,7 @@ func (r *generateName) Create(ctx context.Context, req resource.CreateRequest, r
 		ResourceFunction:    plan.Function.ValueString(),
 		ResourceInstance:    plan.Instance.ValueString(),
 		ResourceLocation:    plan.Location.ValueString(),
-		CustomComponents: azurenamingtool.GenerateNameRequestCustomComponents{
-			Application: plan.Application.ValueString(),
-		},
+		CustomComponents:    plan.buildCustomComponents(),
 	}
 
 	generateResponse, err := r.client.GenerateName(generateRequest)
@@ -194,9 +235,7 @@ func (r *generateName) Read(ctx context.Context, req resource.ReadRequest, resp 
 			ResourceFunction:    state.Function.ValueString(),
 			ResourceInstance:    state.Instance.ValueString(),
 			ResourceLocation:    state.Location.ValueString(),
-			CustomComponents: azurenamingtool.GenerateNameRequestCustomComponents{
-				Application: state.Application.ValueString(),
-			},
+			CustomComponents:    state.buildCustomComponents(),
 		}
 
 		generateResponse, err := r.client.GenerateName(generateRequest)
@@ -323,9 +362,7 @@ func (r *generateName) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 		ResourceFunction:    plan.Function.ValueString(),
 		ResourceInstance:    plan.Instance.ValueString(),
 		ResourceLocation:    plan.Location.ValueString(),
-		CustomComponents: azurenamingtool.GenerateNameRequestCustomComponents{
-			Application: plan.Application.ValueString(),
-		},
+		CustomComponents:    plan.buildCustomComponents(),
 	}
 
 	generateResponse, err := r.client.GenerateName(generateRequest)
