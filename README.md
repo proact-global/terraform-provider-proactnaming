@@ -26,7 +26,7 @@ terraform {
   required_providers {
     proactnaming = {
       source = "proact-global/proactnaming"
-      version = "~> 1.0"
+      version = "~> 0.4"
     }
   }
 }
@@ -34,7 +34,7 @@ terraform {
 provider "proactnaming" {
   host           = "https://your-naming-tool.azurewebsites.net"
   apikey         = var.naming_tool_apikey
-  admin_password = var.naming_tool_admin_password # Required for delete operations
+  admin_password = var.naming_tool_admin_password # Required for delete and drift detection
 }
 ```
 
@@ -74,7 +74,7 @@ export PROACTNAMING_ADMIN_PASSWORD="your-admin-password"
 |----------|------|----------|-------------|
 | `host` | string | Yes | Base URL of your Azure Naming Tool instance |
 | `apikey` | string | Yes | API key for authentication |
-| `admin_password` | string | No | Admin password for delete operations |
+| `admin_password` | string | Yes | Admin password for delete and drift-detection operations |
 
 ## Resource: `proactnaming_generate_name`
 
@@ -116,10 +116,14 @@ go build
 ### Running Tests
 
 ```shell
-# Unit tests
+# Unit tests (no live instance needed)
 go test ./...
 
 # Acceptance tests (requires live Azure Naming Tool)
+export PROACTNAMING_HOST="https://your-naming-tool.azurewebsites.net"
+export PROACTNAMING_APIKEY="your-api-key"
+export PROACTNAMING_ADMIN_PASSWORD="your-admin-password"  # required for drift detection and delete tests
+
 TF_ACC=1 go test ./internal/provider -v
 ```
 

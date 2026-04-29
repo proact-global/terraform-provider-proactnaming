@@ -32,3 +32,12 @@ func testAccPreCheck(t *testing.T) {
 		t.Skip("PROACTNAMING_APIKEY must be set for acceptance tests")
 	}
 }
+
+// testAccPreCheckWithAdmin skips the test if admin credentials are not set.
+// Required for tests that exercise delete or GetName (Admin API) paths.
+func testAccPreCheckWithAdmin(t *testing.T) {
+	testAccPreCheck(t)
+	if v := os.Getenv("PROACTNAMING_ADMIN_PASSWORD"); v == "" {
+		t.Skip("PROACTNAMING_ADMIN_PASSWORD must be set for this acceptance test")
+	}
+}

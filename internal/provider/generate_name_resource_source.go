@@ -4,6 +4,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -224,8 +225,32 @@ func (r *generateName) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
-	// Generate the name if it hasn't been generated yet OR if we need to populate missing fields.
-	// Check if ID is null - this indicates we need to create the persistent entry.
+	// If we have an ID, verify that the name still exists in the naming tool.
+	// This handles the case where a name was deleted outside of Terraform.
+	if !state.ID.IsNull() && !state.ID.IsUnknown() {
+		id := state.ID.ValueInt64()
+		nameDetails, err := r.client.GetName(id)
+		if err != nil {
+			if errors.Is(err, azurenamingtool.ErrNotFound) {
+				// Name no longer exists in the naming tool; remove from state so
+				// Terraform knows to recreate it on the next apply.
+				resp.State.RemoveResource(ctx)
+				return
+			}
+			resp.Diagnostics.AddError(
+				"Unable to Read Generated Name",
+				fmt.Sprintf("An error occurred while reading the generated name with ID %d: %s", id, err.Error()),
+			)
+			return
+		}
+		// Update state with current values from the naming tool.
+		state.ResourceName = types.StringValue(nameDetails.ResourceName)
+		diags = resp.State.Set(ctx, state)
+		resp.Diagnostics.Append(diags...)
+		return
+	}
+
+	// No ID in state yet — generate the name to populate missing fields.
 	if state.ID.IsNull() || state.ID.IsUnknown() {
 		// Generate the name using the API to create a persistent entry.
 		generateRequest := azurenamingtool.GenerateNameRequest{

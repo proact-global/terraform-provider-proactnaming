@@ -18,7 +18,7 @@ terraform {
   required_providers {
     proactnaming = {
       source  = "proact-global/proactnaming"
-      version = "~> 1.0"
+      version = "~> 0.4"
     }
   }
 }
@@ -28,7 +28,7 @@ provider "proactnaming" {
   # Configuration via environment variables:
   # export PROACTNAMING_HOST="https://your-naming-tool.azurewebsites.net"
   # export PROACTNAMING_APIKEY="your-api-key"
-  # export PROACTNAMING_ADMIN_PASSWORD="your-admin-password"  # Optional
+  # export PROACTNAMING_ADMIN_PASSWORD="your-admin-password"
 }
 
 # Generate a resource group name
@@ -62,7 +62,7 @@ resource "azurerm_resource_group" "main" {
 provider "proactnaming" {
   host           = "https://your-naming-tool.azurewebsites.net"
   apikey         = "your-api-key-here"
-  admin_password = "your-admin-password" # Optional
+  admin_password = "your-admin-password"
 }
 ```
 
@@ -81,9 +81,9 @@ provider "proactnaming" {
 
 ### Optional
 
-- `admin_password` (String, Sensitive) Admin password for delete operations in the Azure Naming Tool. Can also be set via the `PROACTNAMING_ADMIN_PASSWORD` environment variable.
+- `admin_password` (String, Sensitive) Admin password for the Azure Naming Tool. Can also be set via the `PROACTNAMING_ADMIN_PASSWORD` environment variable.
 
-This password is only required for delete operations and should be kept secure.
+Required for delete operations and drift detection. Without this value `terraform destroy` will fail and out-of-band deletions will not be detected.
 - `apikey` (String, Sensitive) API key for authenticating with the Azure Naming Tool. Can also be set via the `PROACTNAMING_APIKEY` environment variable.
 
 This key should have appropriate permissions to generate names via the API.

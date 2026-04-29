@@ -31,6 +31,31 @@ resource "azurerm_resource_group" "main" {
 }
 ```
 
+### Custom Components (e.g. subnet)
+
+Some resource types require extra naming components. Use one `custom_component` block per component:
+
+```terraform
+resource "proactnaming_generate_name" "subnet" {
+  organization  = "myorg"
+  resource_type = "snet"
+  application   = "webapp"
+  instance      = "001"
+  location      = "euw"
+  environment   = "prod"
+
+  custom_component {
+    name  = "subnet_tier"
+    value = "app"
+  }
+
+  custom_component {
+    name  = "subnet_instance"
+    value = "01"
+  }
+}
+```
+
 ### Multiple Resources with Different Functions
 
 ```terraform
@@ -127,5 +152,11 @@ resource "proactnaming_generate_name" "example" {
   environment   = var.environment
 }
 ```
+
+## Drift Detection
+
+On every `terraform plan` and `terraform refresh`, the provider calls the Admin API with the stored `id` to verify the name still exists. If the name has been deleted outside of Terraform, the provider removes the resource from state so that Terraform plans a recreation on the next `apply`.
+
+This requires `admin_password` to be configured (via the `PROACTNAMING_ADMIN_PASSWORD` environment variable or the provider `admin_password` argument).
 
 {{ .SchemaMarkdown | trimspace }}

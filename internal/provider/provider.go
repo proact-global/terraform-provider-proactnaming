@@ -73,9 +73,9 @@ func (p *proactnamingProvider) Schema(_ context.Context, _ provider.SchemaReques
 				Sensitive: true,
 			},
 			"admin_password": schema.StringAttribute{
-				Description: "Admin password for delete operations in the Azure Naming Tool. Can also be set via the PROACTNAMING_ADMIN_PASSWORD environment variable.",
-				MarkdownDescription: "Admin password for delete operations in the Azure Naming Tool. Can also be set via the `PROACTNAMING_ADMIN_PASSWORD` environment variable.\n\n" +
-					"This password is only required for delete operations and should be kept secure.",
+				Description: "Admin password for the Azure Naming Tool. Can also be set via the PROACTNAMING_ADMIN_PASSWORD environment variable.",
+				MarkdownDescription: "Admin password for the Azure Naming Tool. Can also be set via the `PROACTNAMING_ADMIN_PASSWORD` environment variable.\n\n" +
+					"Required for delete operations and drift detection. Without this value `terraform destroy` will fail and out-of-band deletions will not be detected.",
 				Optional:  true,
 				Sensitive: true,
 			},
@@ -165,6 +165,16 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 			"The provider cannot create the Azure Naming Tool client as there is a missing or empty value for the API key. "+
 				"Set the apikey value in the configuration or use the PROACTNAMING_APIKEY environment variable. "+
 				"Obtain your API key from your Azure Naming Tool administrator.",
+		)
+	}
+
+	if adminpassword == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("admin_password"),
+			"Missing ProAct Naming Admin Password",
+			"The provider cannot create the Azure Naming Tool client as there is a missing or empty value for the admin password. "+
+				"Set the admin_password value in the configuration or use the PROACTNAMING_ADMIN_PASSWORD environment variable. "+
+				"The admin password is required for delete operations and drift detection.",
 		)
 	}
 
