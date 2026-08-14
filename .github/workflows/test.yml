@@ -101,7 +101,11 @@ jobs:
   # To enable:
   #   1. Set the repository variable ACCEPTANCE_TESTS_ENABLED to "true".
   #   2. Configure the repository secrets PROACTNAMING_HOST, PROACTNAMING_APIKEY
-  #      and PROACTNAMING_ADMIN_PASSWORD.
+  #      and PROACTNAMING_ADMIN_PASSWORD. PROACTNAMING_HOST must not end in a
+  #      trailing slash.
+  #
+  # Note that ACCEPTANCE_TESTS_ENABLED is a repository *variable*, not a secret:
+  # the secrets context is not available in job-level `if` conditions.
   #
   # The admin password is required, and not only for destroy: the provider
   # deletes its plan-time preview entry during plan, which is an Admin API call.
@@ -114,7 +118,15 @@ jobs:
   acceptance:
     name: Acceptance Tests
     needs: build
-    if: ${{ vars.ACCEPTANCE_TESTS_ENABLED == 'true' }}
+    # Fork pull requests are excluded deliberately. GitHub withholds secrets from
+    # them but still exposes repository variables, so without the fork check this
+    # job would start with empty credentials, fail the pre-check (which is strict
+    # under CI) and turn an outside contributor's pull request red through no
+    # fault of their own.
+    if: >-
+      ${{ vars.ACCEPTANCE_TESTS_ENABLED == 'true' &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
