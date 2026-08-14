@@ -70,27 +70,39 @@ func TestAccGenerateNameResource_DriftDetection(t *testing.T) {
 	instance := testAccInstance(t, 0)
 	config := testAccGenerateNameResourceConfig(org, rt, "drifttest", "drift", instance, loc, env)
 
+	var createdID string
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheckWithAdmin(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
-			// Step 1: Create the resource, then immediately delete it externally to simulate drift.
-			// ExpectNonEmptyPlan is required because the post-step refresh detects the name is
-			// gone (our Check deleted it) and marks the resource for recreation.
+			// Step 1: create the name normally and remember its id.
 			{
-				Config:             config,
-				ExpectNonEmptyPlan: true,
+				Config: config,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "id"),
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "resource_name"),
-					// Simulate out-of-band deletion so the next step exercises drift detection.
-					testAccDeleteGeneratedNameExternally("proactnaming_generate_name.test"),
+					testAccRecordAttr("proactnaming_generate_name.test", "id", &createdID),
 				),
 			},
-			// Step 2: Re-apply the same config. The provider's Read detects ErrNotFound,
-			// removes the resource from state, and Terraform recreates it.
+			// Step 2: delete the name out of band before this step plans, then
+			// apply the same configuration. Terraform must notice the absence
+			// during refresh and recreate it.
+			//
+			// The deletion happens in PreConfig rather than in the previous
+			// step's Check, and this step does not use ExpectNonEmptyPlan.
+			// Deleting inside a Check leaves the framework to decide the
+			// deletion's significance from whether a follow-up refresh plan came
+			// back empty, and that is not reliable here: the naming tool reissues
+			// the id of a deleted record, so the entry the plan-time preview
+			// creates and removes can momentarily occupy the same id as the
+			// record just deleted. A refresh landing in that window sees the id
+			// present and reports no drift. Asserting on the recreation instead
+			// tests the same behaviour without depending on when each refresh
+			// happens to run.
 			{
-				Config: config,
+				PreConfig: func() { testAccDeleteGeneratedNameByID(t, &createdID) },
+				Config:    config,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "id"),
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "resource_name"),
@@ -100,6 +112,48 @@ func TestAccGenerateNameResource_DriftDetection(t *testing.T) {
 			},
 		},
 	})
+}
+
+// testAccRecordAttr captures an attribute value from state so a later step can
+// act on it.
+func testAccRecordAttr(resourceName, attr string, dest *string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("resource not found in state: %s", resourceName)
+		}
+		v, ok := rs.Primary.Attributes[attr]
+		if !ok {
+			return fmt.Errorf("attribute %q not found on %s", attr, resourceName)
+		}
+		*dest = v
+		return nil
+	}
+}
+
+// testAccDeleteGeneratedNameByID removes a generated name directly through the
+// API client, standing in for a deletion made outside Terraform.
+func testAccDeleteGeneratedNameByID(t *testing.T, idRef *string) {
+	t.Helper()
+
+	id, err := strconv.ParseInt(*idRef, 10, 64)
+	if err != nil {
+		t.Fatalf("could not parse recorded id %q: %v", *idRef, err)
+	}
+
+	host := os.Getenv("PROACTNAMING_HOST")
+	apiKey := os.Getenv("PROACTNAMING_APIKEY")
+	adminPwd := os.Getenv("PROACTNAMING_ADMIN_PASSWORD")
+
+	client, err := azurenamingtool.NewClient(&host, &apiKey, &adminPwd)
+	if err != nil {
+		t.Fatalf("could not construct client: %v", err)
+	}
+
+	if _, err := client.DeleteName(azurenamingtool.DeleteGeneratedNameRequest{ID: id}); err != nil {
+		t.Fatalf("out-of-band delete of id %d failed: %v", id, err)
+	}
+	t.Logf("deleted generated name id=%d out of band", id)
 }
 
 // TestAccGenerateNameResource_MultipleResources tests that different configurations
@@ -134,38 +188,6 @@ func TestAccGenerateNameResource_MultipleResources(t *testing.T) {
 			},
 		},
 	})
-}
-
-// testAccDeleteGeneratedNameExternally returns a TestCheckFunc that deletes the generated
-// name entry directly via the API client, simulating an out-of-band deletion for drift tests.
-func testAccDeleteGeneratedNameExternally(resourceName string) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		rs, ok := s.RootModule().Resources[resourceName]
-		if !ok {
-			return fmt.Errorf("resource not found in state: %s", resourceName)
-		}
-
-		idStr := rs.Primary.Attributes["id"]
-		id, err := strconv.ParseInt(idStr, 10, 64)
-		if err != nil {
-			return fmt.Errorf("failed to parse id %q: %w", idStr, err)
-		}
-
-		host := os.Getenv("PROACTNAMING_HOST")
-		apiKey := os.Getenv("PROACTNAMING_APIKEY")
-		adminPwd := os.Getenv("PROACTNAMING_ADMIN_PASSWORD")
-
-		client, err := azurenamingtool.NewClient(&host, &apiKey, &adminPwd)
-		if err != nil {
-			return fmt.Errorf("failed to create naming tool client: %w", err)
-		}
-
-		_, err = client.DeleteName(azurenamingtool.DeleteGeneratedNameRequest{ID: id})
-		if err != nil {
-			return fmt.Errorf("external delete of name ID %d failed: %w", id, err)
-		}
-		return nil
-	}
 }
 
 func testAccGenerateNameResourceConfig(organization, resourceType, application, function, instance, location, environment string) string {
