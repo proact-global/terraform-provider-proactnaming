@@ -7,9 +7,22 @@ on:
   pull_request:
     paths-ignore:
       - 'README.md'
+  # Only main. Without a branch filter, pushing to a branch that has an open
+  # pull request starts a second, identical run, and the two execute acceptance
+  # tests against the same naming tool at the same time. The tool loses writes
+  # when written concurrently, so the duplicate run silently deletes records the
+  # first one had just created. Pull requests are covered by the trigger above.
   push:
+    branches:
+      - main
     paths-ignore:
       - 'README.md'
+
+# Supersede an in-flight run when a branch is pushed again, rather than letting
+# two runs for the same branch overlap on the shared naming tool.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 # Testing only needs permissions to read the repository contents.
 permissions:
