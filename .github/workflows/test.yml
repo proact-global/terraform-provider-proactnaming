@@ -18,11 +18,23 @@ on:
     paths-ignore:
       - 'README.md'
 
-# Supersede an in-flight run when a branch is pushed again, rather than letting
-# two runs for the same branch overlap on the shared naming tool.
+# One run at a time for the whole repository.
+#
+# The acceptance tests write to a single shared naming tool which loses writes
+# when written concurrently, so any two overlapping runs corrupt each other --
+# whether they come from the same branch pushed twice or, more easily, from two
+# open pull requests being tested at once.
+#
+# The group is deliberately a constant rather than the branch, because scoping
+# it per branch would still allow separate pull requests to overlap, which is
+# the common case whenever more than one is open.
+#
+# The cost is that unrelated runs queue behind each other, including the fast
+# build and unit jobs. That is the price of the naming tool being shared mutable
+# state; narrow it only if acceptance testing moves to a dedicated instance.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 # Testing only needs permissions to read the repository contents.
 permissions:
