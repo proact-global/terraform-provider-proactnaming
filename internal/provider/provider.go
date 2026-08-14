@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -186,27 +185,18 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 	// Create a new proactnaming client using the configuration values.
 	client, err := azurenamingtool.NewClient(&host, &apikey, &adminpassword)
 	if err != nil {
-		// Enhanced error handling for client creation.
-		if strings.Contains(err.Error(), "invalid host") || strings.Contains(err.Error(), "malformed") {
-			resp.Diagnostics.AddError(
-				"Invalid Host Configuration",
-				fmt.Sprintf("The provided host URL is invalid or malformed: %s\n\n"+
-					"Please ensure the host is a valid URL including the protocol (https://)", host),
-			)
-		} else if strings.Contains(err.Error(), "empty") || strings.Contains(err.Error(), "required") {
-			resp.Diagnostics.AddError(
-				"Missing Required Configuration",
-				"Both host and apikey are required to create the proactnaming API client.\n\n"+
-					"Please ensure both values are provided in the configuration or environment variables.",
-			)
-		} else {
-			resp.Diagnostics.AddError(
-				"Unable to Create proactnaming API Client",
-				fmt.Sprintf("An unexpected error occurred when creating the proactnaming API client.\n\n"+
-					"Client Error: %s\n\n"+
-					"If this error persists, please contact the provider developers.", err.Error()),
-			)
-		}
+		// The client validates the host and reports anything unusable here,
+		// naming the offending value and the form it expected. Attribute the
+		// diagnostic to host rather than restating the message, so Terraform
+		// points at the setting that needs changing.
+		resp.Diagnostics.AddAttributeError(
+			path.Root("host"),
+			"Invalid ProAct Naming API Host",
+			fmt.Sprintf("%s\n\n"+
+				"Provide a base URL including the protocol, for example "+
+				"\"https://your-naming-tool.azurewebsites.net\", either as the host argument "+
+				"or via the PROACTNAMING_HOST environment variable.", err),
+		)
 		return
 	}
 

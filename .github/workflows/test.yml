@@ -7,9 +7,34 @@ on:
   pull_request:
     paths-ignore:
       - 'README.md'
+  # Only main. Without a branch filter, pushing to a branch that has an open
+  # pull request starts a second, identical run, and the two execute acceptance
+  # tests against the same naming tool at the same time. The tool loses writes
+  # when written concurrently, so the duplicate run silently deletes records the
+  # first one had just created. Pull requests are covered by the trigger above.
   push:
+    branches:
+      - main
     paths-ignore:
       - 'README.md'
+
+# One run at a time for the whole repository.
+#
+# The acceptance tests write to a single shared naming tool which loses writes
+# when written concurrently, so any two overlapping runs corrupt each other --
+# whether they come from the same branch pushed twice or, more easily, from two
+# open pull requests being tested at once.
+#
+# The group is deliberately a constant rather than the branch, because scoping
+# it per branch would still allow separate pull requests to overlap, which is
+# the common case whenever more than one is open.
+#
+# The cost is that unrelated runs queue behind each other, including the fast
+# build and unit jobs. That is the price of the naming tool being shared mutable
+# state; narrow it only if acceptance testing moves to a dedicated instance.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 # Testing only needs permissions to read the repository contents.
 permissions:
@@ -94,6 +119,19 @@ jobs:
     timeout-minutes: 15
     strategy:
       fail-fast: false
+      # Run one Terraform version at a time. The matrix jobs share a single
+      # naming tool, and the tool stores generated names by reading the whole
+      # collection, appending, and writing it all back, with no locking. Two
+      # jobs writing at once therefore lose each other's changes: an entry one
+      # job created disappears when another saves a snapshot taken before it
+      # existed, and an entry one job deleted comes back when another saves a
+      # snapshot that still contains it.
+      #
+      # That surfaced as acceptance failures in both directions at once --
+      # names reported missing right after being created, and names reported
+      # present right after being deleted -- which looked like a provider bug
+      # and was not.
+      max-parallel: 1
       # The provider claims support for Terraform >= 1.0, so test that floor and
       # the current release. Add specific versions here if a regression needs
       # pinning down.
@@ -118,5 +156,17 @@ jobs:
           PROACTNAMING_HOST: ${{ secrets.PROACTNAMING_HOST }}
           PROACTNAMING_APIKEY: ${{ secrets.PROACTNAMING_APIKEY }}
           PROACTNAMING_ADMIN_PASSWORD: ${{ secrets.PROACTNAMING_ADMIN_PASSWORD }}
+          # Component values the generated names are built from. These are part
+          # of each naming tool's own configuration rather than credentials, so
+          # they come from repository variables. Any left unset fall back to the
+          # defaults in acceptance_config_test.go; set the ones your instance
+          # disagrees with. A wrong value surfaces as "ResourceType value is
+          # invalid." or similar, which reads like a provider bug but is not.
+          PROACTNAMING_TEST_ORG: ${{ vars.PROACTNAMING_TEST_ORG }}
+          PROACTNAMING_TEST_RESOURCE_TYPE: ${{ vars.PROACTNAMING_TEST_RESOURCE_TYPE }}
+          PROACTNAMING_TEST_RESOURCE_TYPE_ALT: ${{ vars.PROACTNAMING_TEST_RESOURCE_TYPE_ALT }}
+          PROACTNAMING_TEST_LOCATION: ${{ vars.PROACTNAMING_TEST_LOCATION }}
+          PROACTNAMING_TEST_ENVIRONMENT: ${{ vars.PROACTNAMING_TEST_ENVIRONMENT }}
+          PROACTNAMING_TEST_INSTANCE_WIDTH: ${{ vars.PROACTNAMING_TEST_INSTANCE_WIDTH }}
         run: go test -v -cover ./internal/provider/
         timeout-minutes: 10
