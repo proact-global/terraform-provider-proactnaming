@@ -94,6 +94,19 @@ jobs:
     timeout-minutes: 15
     strategy:
       fail-fast: false
+      # Run one Terraform version at a time. The matrix jobs share a single
+      # naming tool, and the tool stores generated names by reading the whole
+      # collection, appending, and writing it all back, with no locking. Two
+      # jobs writing at once therefore lose each other's changes: an entry one
+      # job created disappears when another saves a snapshot taken before it
+      # existed, and an entry one job deleted comes back when another saves a
+      # snapshot that still contains it.
+      #
+      # That surfaced as acceptance failures in both directions at once --
+      # names reported missing right after being created, and names reported
+      # present right after being deleted -- which looked like a provider bug
+      # and was not.
+      max-parallel: 1
       # The provider claims support for Terraform >= 1.0, so test that floor and
       # the current release. Add specific versions here if a regression needs
       # pinning down.
