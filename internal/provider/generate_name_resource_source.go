@@ -400,10 +400,28 @@ func (r *generateName) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 	}
 
 	// Immediately delete the preview entry — it only existed to show the name in the plan.
-	if generateResponse.ResourceNameDetails.ID != 0 {
-		_, _ = r.client.DeleteName(azurenamingtool.DeleteGeneratedNameRequest{
-			ID: generateResponse.ResourceNameDetails.ID,
-		})
+	//
+	// A failure here does not change the name that will be applied: the naming tool is
+	// configured to allow duplicate names, so a leftover entry does not cause the apply
+	// to generate a different name. It does leave an orphan record behind though, and
+	// those accumulate on every plan, so report it instead of discarding the error.
+	//
+	// This is also the only place a bad admin password becomes visible: the naming tool
+	// answers an incorrect or missing password with HTTP 200 and a "FAILURE" body rather
+	// than an authentication error, so nothing surfaces it at provider configuration time.
+	if id := generateResponse.ResourceNameDetails.ID; id != 0 {
+		if _, err := r.client.DeleteName(azurenamingtool.DeleteGeneratedNameRequest{ID: id}); err != nil {
+			resp.Diagnostics.AddWarning(
+				"Preview Name Cleanup Failed",
+				fmt.Sprintf("The name preview generated during planning could not be removed from the "+
+					"Azure Naming Tool, leaving entry ID %d behind.\n\n"+
+					"The planned name is still correct and the apply can proceed, but this entry will "+
+					"remain in the naming tool until it is removed manually.\n\n"+
+					"The most common cause is an incorrect admin_password, which the naming tool reports "+
+					"here rather than when the provider is configured.\n\n"+
+					"Error: %s", id, err),
+			)
+		}
 	}
 
 	plan.ResourceName = types.StringValue(generateResponse.ResourceName)
