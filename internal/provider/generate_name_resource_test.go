@@ -20,8 +20,8 @@ func TestAccGenerateNameResource(t *testing.T) {
 
 	// Derived from the clock so repeated runs do not collide, and padded to the
 	// width the naming tool requires.
-	uniqueInstance := testAccInstance(0)
-	replacementInstance := testAccInstance(1)
+	uniqueInstance := testAccInstance(t, 0)
+	replacementInstance := testAccInstance(t, 1)
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheckWithAdmin(t) },
@@ -67,7 +67,7 @@ func TestAccGenerateNameResource(t *testing.T) {
 func TestAccGenerateNameResource_DriftDetection(t *testing.T) {
 	org, rt := testAccOrg(), testAccResourceTypeAlt()
 	loc, env := testAccLocation(), testAccEnvironment()
-	instance := testAccInstance(0)
+	instance := testAccInstance(t, 0)
 	config := testAccGenerateNameResourceConfig(org, rt, "drifttest", "drift", instance, loc, env)
 
 	resource.Test(t, resource.TestCase{
@@ -112,8 +112,8 @@ func TestAccGenerateNameResource_MultipleResources(t *testing.T) {
 	// Two distinct instance values, both padded to the required width. The
 	// previous derivation (timestamp%100) produced one or two characters, which
 	// the naming tool rejects outright.
-	inst1 := testAccInstance(0)
-	inst2 := testAccInstance(1)
+	inst1 := testAccInstance(t, 0)
+	inst2 := testAccInstance(t, 1)
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheckWithAdmin(t) },

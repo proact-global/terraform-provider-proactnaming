@@ -15,7 +15,7 @@ import (
 func TestAccGeneratedNameDataSource(t *testing.T) {
 	org, rt := testAccOrg(), testAccResourceType()
 	loc, env := testAccLocation(), testAccEnvironment()
-	instance := testAccInstance(0)
+	instance := testAccInstance(t, 0)
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheckWithAdmin(t) },
