@@ -1,6 +1,11 @@
 *.dll
 *.exe
 .DS_Store
+
+# Provider binary produced by 'go build' / 'make build' at the repository root.
+# Anchored to the root so it cannot match the repository directory itself.
+/terraform-provider-proactnaming
+
 example.tf
 terraform.tfplan
 terraform.tfstate

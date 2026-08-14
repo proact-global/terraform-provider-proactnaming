@@ -1,4 +1,5 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) Proact
+// SPDX-License-Identifier: MIT
 
 package provider
 

@@ -1,5 +1,5 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Proact
+// SPDX-License-Identifier: MIT
 
 package provider
 
@@ -18,26 +18,37 @@ var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServe
 	"proactnaming": providerserver.NewProtocol6WithError(New("test")()),
 }
 
+// testAccPreCheck ensures the credentials an acceptance test needs are present.
+//
+// Locally a missing credential skips the test, so `go test ./...` stays useful
+// without a naming tool to hand. In CI it fails instead: a workflow that opts
+// into acceptance testing but has no credentials configured would otherwise skip
+// every test and report a green build while exercising nothing.
 func testAccPreCheck(t *testing.T) {
-	// You can add code here to run prior to any test case execution, for example assertions.
-	// about the appropriate environment variables being set are common to see in a pre-check.
-	// function.
-
-	// Check for required environment variables for acceptance tests.
-	// These can be set for testing without exposing credentials in code.
-	if v := os.Getenv("PROACTNAMING_HOST"); v == "" {
-		t.Skip("PROACTNAMING_HOST must be set for acceptance tests")
-	}
-	if v := os.Getenv("PROACTNAMING_APIKEY"); v == "" {
-		t.Skip("PROACTNAMING_APIKEY must be set for acceptance tests")
-	}
+	t.Helper()
+	requireAccEnv(t, "PROACTNAMING_HOST")
+	requireAccEnv(t, "PROACTNAMING_APIKEY")
 }
 
-// testAccPreCheckWithAdmin skips the test if admin credentials are not set.
-// Required for tests that exercise delete or GetName (Admin API) paths.
+// testAccPreCheckWithAdmin also requires the admin password, needed by tests
+// that exercise the Admin API delete path.
 func testAccPreCheckWithAdmin(t *testing.T) {
+	t.Helper()
 	testAccPreCheck(t)
-	if v := os.Getenv("PROACTNAMING_ADMIN_PASSWORD"); v == "" {
-		t.Skip("PROACTNAMING_ADMIN_PASSWORD must be set for this acceptance test")
+	requireAccEnv(t, "PROACTNAMING_ADMIN_PASSWORD")
+}
+
+// requireAccEnv skips or fails, depending on whether this is a CI run.
+func requireAccEnv(t *testing.T, key string) {
+	t.Helper()
+	if os.Getenv(key) != "" {
+		return
 	}
+	msg := key + " must be set for acceptance tests"
+	if os.Getenv("CI") != "" {
+		// Forcing a failure here is the point: silently skipping in CI is
+		// indistinguishable from passing.
+		t.Fatal(msg + " (set in CI, where skipping would report a false pass)")
+	}
+	t.Skip(msg)
 }
