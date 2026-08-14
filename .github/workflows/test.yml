@@ -118,5 +118,17 @@ jobs:
           PROACTNAMING_HOST: ${{ secrets.PROACTNAMING_HOST }}
           PROACTNAMING_APIKEY: ${{ secrets.PROACTNAMING_APIKEY }}
           PROACTNAMING_ADMIN_PASSWORD: ${{ secrets.PROACTNAMING_ADMIN_PASSWORD }}
+          # Component values the generated names are built from. These are part
+          # of each naming tool's own configuration rather than credentials, so
+          # they come from repository variables. Any left unset fall back to the
+          # defaults in acceptance_config_test.go; set the ones your instance
+          # disagrees with. A wrong value surfaces as "ResourceType value is
+          # invalid." or similar, which reads like a provider bug but is not.
+          PROACTNAMING_TEST_ORG: ${{ vars.PROACTNAMING_TEST_ORG }}
+          PROACTNAMING_TEST_RESOURCE_TYPE: ${{ vars.PROACTNAMING_TEST_RESOURCE_TYPE }}
+          PROACTNAMING_TEST_RESOURCE_TYPE_ALT: ${{ vars.PROACTNAMING_TEST_RESOURCE_TYPE_ALT }}
+          PROACTNAMING_TEST_LOCATION: ${{ vars.PROACTNAMING_TEST_LOCATION }}
+          PROACTNAMING_TEST_ENVIRONMENT: ${{ vars.PROACTNAMING_TEST_ENVIRONMENT }}
+          PROACTNAMING_TEST_INSTANCE_WIDTH: ${{ vars.PROACTNAMING_TEST_INSTANCE_WIDTH }}
         run: go test -v -cover ./internal/provider/
         timeout-minutes: 10
