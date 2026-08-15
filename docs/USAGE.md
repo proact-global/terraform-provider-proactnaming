@@ -1,149 +1,173 @@
 # Using the Proact Naming Terraform Provider
 
-The Proact Naming Terraform provider is deployed to our private Terrakube registry at `registry.eng.proactmcs.eu`. Due to GPG signature verification requirements, the recommended approach is to use a filesystem mirror setup.
+The provider is published on the public [Terraform Registry](https://registry.terraform.io/providers/proact-global/proactnaming), so `terraform init` installs it for you. No manual download, filesystem mirror or plugin directory is needed.
 
-## Quick Setup
-
-### Automated Setup (Recommended)
-Run the setup script from the provider repository:
-
-```bash
-./scripts/setup-local-provider.sh
-```
-
-This script will:
-- Detect your platform (OS/architecture)
-- Download the appropriate provider binary from Azure Storage
-- Set up the filesystem mirror configuration
-- Configure your `~/.terraformrc` file
-
-### Manual Setup
-
-1. **Download the provider binary** for your platform:
-   - **macOS ARM64**: [terraform-provider-proactnaming_1.0.0_darwin_arm64.zip](https://proactdevelopment1231754.blob.core.windows.net/terraform-providers/proact/proactnaming/1.0.0/terraform-provider-proactnaming_1.0.0_darwin_arm64.zip)
-   - **Linux AMD64**: [terraform-provider-proactnaming_1.0.0_linux_amd64.zip](https://proactdevelopment1231754.blob.core.windows.net/terraform-providers/proact/proactnaming/1.0.0/terraform-provider-proactnaming_1.0.0_linux_amd64.zip)
-
-2. **Create the plugin directory**:
-   ```bash
-   mkdir -p ~/.terraform.d/plugins/registry.eng.proactmcs.eu/proact/proactnaming/1.0.0/darwin_arm64
-   # OR for Linux:
-   # mkdir -p ~/.terraform.d/plugins/registry.eng.proactmcs.eu/proact/proactnaming/1.0.0/linux_amd64
-   ```
-
-3. **Extract and install the binary**:
-   ```bash
-   cd ~/.terraform.d/plugins/registry.eng.proactmcs.eu/proact/proactnaming/1.0.0/darwin_arm64
-   unzip ~/Downloads/terraform-provider-proactnaming_1.0.0_darwin_arm64.zip
-   chmod +x terraform-provider-proactnaming_v1.0.0
-   ```
-
-4. **Configure Terraform CLI** (`~/.terraformrc`):
-   ```hcl
-   provider_installation {
-     filesystem_mirror {
-       path = "~/.terraform.d/plugins"
-       include = ["registry.eng.proactmcs.eu/proact/*"]
-     }
-     
-     network_mirror {
-       url = "https://registry.terraform.io/"
-       include = ["registry.terraform.io/*/*"]
-     }
-   }
-   ```
-
-## Usage in Terraform
-
-Add the provider to your `terraform` block:
+## Installation
 
 ```hcl
 terraform {
   required_providers {
     proactnaming = {
-      source  = "registry.eng.proactmcs.eu/proact/proactnaming"
-      version = "~> 1.0"
+      source  = "proact-global/proactnaming"
+      version = "~> 0.5"
     }
   }
 }
-
-provider "proactnaming" {
-  host    = "https://your-naming-tool.azurewebsites.net"
-  api_key = var.naming_tool_api_key
-}
 ```
 
-Then use the provider resources:
+Then run `terraform init`. Terraform verifies the release signature automatically.
+
+## Configuring the provider
 
 ```hcl
-resource "proactnaming_generate_name" "example" {
-  resource_type = "rg"
-  organization  = "myorg"
-  location      = "euw"
-  environment   = "dev"
-  application   = "webapp"
-  function      = "api"
-  instance      = "001"
-}
-
-output "generated_name" {
-  value = proactnaming_generate_name.example.resource_name
+provider "proactnaming" {
+  host           = "https://your-naming-tool.azurewebsites.net"
+  apikey         = var.naming_tool_apikey
+  admin_password = var.naming_tool_admin_password
 }
 ```
 
-## Why Filesystem Mirror?
+| Argument | Environment variable | Notes |
+|----------|---------------------|-------|
+| `host` | `PROACTNAMING_HOST` | Base URL of your Azure Naming Tool. Must include the scheme and must not end in a slash. |
+| `apikey` | `PROACTNAMING_APIKEY` | API key with permission to generate names. |
+| `admin_password` | `PROACTNAMING_ADMIN_PASSWORD` | Global admin password. See the note below — it is needed more often than you might expect. |
 
-The filesystem mirror approach is used because:
-- **Bypasses GPG signature verification** issues with private registries
-- **Ensures consistent provider versions** across team members
-- **Works offline** once the provider is cached locally
-- **Faster initialization** as no network requests are needed for the provider
+All three can be supplied by environment variable instead, which keeps credentials out of your configuration:
 
-## Alternative: Development Overrides
+```bash
+export PROACTNAMING_HOST="https://your-naming-tool.azurewebsites.net"
+export PROACTNAMING_APIKEY="…"
+export PROACTNAMING_ADMIN_PASSWORD="…"
+```
 
-For development work, you can also use development overrides:
+### The admin password is needed during `plan`, not just `destroy`
+
+To show the real name during `terraform plan` rather than `(known after apply)`, the provider generates the name at plan time and immediately deletes that preview entry. Deleting is an Admin API call, so **`admin_password` must be available whenever anyone runs `terraform plan`** — including plan-only CI pipelines that would otherwise need no write credentials.
+
+If the password is wrong, plans still appear to succeed: the naming tool answers an incorrect password with HTTP 200 and a `FAILURE` body rather than an authentication error. Since v0.5.0 the provider reports this as a warning naming the entry it could not remove. Treat that warning as "check `admin_password`".
+
+## Generating a name
+
+```hcl
+resource "proactnaming_generate_name" "storage" {
+  organization  = "myorg"
+  resource_type = "st"
+  application   = "webapp"
+  function      = "data"   # optional
+  instance      = "001"
+  location      = "euw"
+  environment   = "prod"
+}
+
+resource "azurerm_storage_account" "example" {
+  name                = proactnaming_generate_name.storage.resource_name
+  resource_group_name = azurerm_resource_group.example.name
+  location            = azurerm_resource_group.example.location
+  # …
+}
+```
+
+`organization`, `resource_type`, `application`, `instance`, `location` and `environment` are required; `function` is optional. Every input forces replacement when changed, so a generated name never silently drifts from the inputs that produced it.
+
+Attributes available afterwards: `resource_name`, `id` (the record's ID in the naming tool), `success` and `message`.
+
+The values you supply must exist in your naming tool's own configuration. `resource_type` is matched **exactly and case-sensitively** against the configured short names, and components such as `instance` may have a fixed length.
+
+### Resource types needing extra components
+
+Some resource types require components beyond the fixed arguments. Supply them as `custom_component` blocks:
+
+```hcl
+resource "proactnaming_generate_name" "subnet" {
+  organization  = "myorg"
+  resource_type = "snet"
+  application   = "webapp"
+  instance      = "001"
+  location      = "euw"
+  environment   = "prod"
+
+  custom_component {
+    name  = "subnet_tier"
+    value = "app"
+  }
+
+  custom_component {
+    name  = "subnet_instance"
+    value = "01"
+  }
+}
+```
+
+Use a `dynamic "custom_component"` block when the set varies. Note that `application` is itself sent as a custom component, so a block named `application` overrides the `application` argument.
+
+## Data sources
+
+```hcl
+# Every resource type your naming tool knows about, with its rules.
+data "proactnaming_resource_types" "all" {}
+
+# Map of azurerm resource type to short name, e.g. azurerm_storage_account => st.
+data "proactnaming_azurerm_resources" "lookup" {}
+
+resource "proactnaming_generate_name" "from_lookup" {
+  resource_type = data.proactnaming_azurerm_resources.lookup.resources["azurerm_storage_account"]
+  # …
+}
+
+# Look up a previously generated name by its ID.
+data "proactnaming_generated_name" "existing" {
+  id = proactnaming_generate_name.storage.id
+}
+```
+
+`proactnaming_azurerm_resources` is the convenient one: it saves hard-coding short names, and it stays correct if your naming tool's configuration changes.
+
+## Local development
+
+To test a locally built provider, use `dev_overrides` rather than installing into a plugin directory:
 
 ```hcl
 # ~/.terraformrc
 provider_installation {
   dev_overrides {
-    "registry.eng.proactmcs.eu/proact/proactnaming" = "/path/to/your/built/provider"
+    "proact-global/proactnaming" = "/path/to/your/gobin"
   }
-  
+
   direct {}
 }
 ```
 
+Build with `go install`, and Terraform will use your binary. `terraform init` is skipped for overridden providers — Terraform prints a warning to that effect, which is expected.
+
 ## Troubleshooting
 
-### Provider Not Found
-- Ensure the filesystem mirror path in `~/.terraformrc` is correct
-- Verify the provider binary exists in the expected location
-- Check that the binary is executable (`chmod +x`)
+**`host … is missing a scheme`**
+`host` needs the protocol: `https://your-naming-tool.azurewebsites.net`, not `your-naming-tool.azurewebsites.net`. Earlier versions accepted this and failed later with an unhelpful `unsupported protocol scheme ""`.
 
-### Platform Mismatch
-- Ensure you downloaded the correct binary for your platform
-- The directory structure must match: `{os}_{arch}` (e.g., `darwin_arm64`, `linux_amd64`)
+**`Api Key is not valid!` / `Api Key was not provided!`**
+`apikey` is wrong or unset.
 
-### Lock File Warnings
-When using filesystem mirrors, you may see warnings about "unauthenticated" providers and incomplete lock files. This is expected and safe.
+**`Preview Name Cleanup Failed` warning**
+The plan-time preview entry could not be removed. Almost always an incorrect `admin_password`. The plan itself is still correct, but a record is left behind in the naming tool on every plan until it is fixed.
 
-To generate lock file entries for additional platforms:
-```bash
-terraform providers lock -platform=linux_amd64 -platform=darwin_arm64
-```
+**`ResourceType value is invalid.`**
+No resource type on your instance has that short name. Matching is exact and case-sensitive. List the configured types with `data.proactnaming_resource_types`.
 
-## Registry Information
+**`Instance value length is invalid. The value must be between N and N characters.`**
+`instance` must be exactly the configured width — pad it, for example `001` rather than `1`.
 
-- **Registry URL**: `registry.eng.proactmcs.eu`
-- **Provider Source**: `registry.eng.proactmcs.eu/proact/proactnaming`
-- **Current Version**: `1.0.0`
-- **Supported Platforms**: 
-  - `darwin/arm64` (macOS Apple Silicon)
-  - `linux/amd64` (Linux x86_64)
+**`You must supply the required components.`**
+One or more of `organization`, `location` or `environment` is not a value your naming tool recognises, or a required custom component is missing.
+
+## Concurrency
+
+The Azure Naming Tool stores generated names by reading the whole collection, appending, and writing it back, without locking. Two operations writing at the same time can therefore lose one another's records: a name one caller created can vanish, and a name another deleted can reappear.
+
+In practice this means **avoid running `terraform apply` against the same naming tool concurrently** — from several pipelines, or from a pipeline while someone works in the tool's UI. The provider serialises its own requests within a single run, but it cannot coordinate across separate processes or machines.
 
 ## Support
 
-For issues with the provider:
-1. Check the [provider documentation](README.md)
-2. Verify your Azure Naming Tool configuration
-3. Contact the development team
+- Provider issues: open an issue in this repository.
+- Azure Naming Tool itself: consult your naming tool documentation or its administrator.
+- Terraform: [Terraform documentation](https://developer.hashicorp.com/terraform/docs).
