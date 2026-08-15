@@ -1,3 +1,11 @@
+---
+page_title: "Using the Proact Naming provider"
+subcategory: ""
+description: |-
+  Installing and configuring the provider, generating names, and resolving the
+  errors the Azure Naming Tool returns.
+---
+
 # Using the Proact Naming Terraform Provider
 
 The provider is published on the public [Terraform Registry](https://registry.terraform.io/providers/proact-global/proactnaming), so `terraform init` installs it for you. No manual download, filesystem mirror or plugin directory is needed.
