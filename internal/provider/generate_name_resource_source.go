@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -31,6 +32,24 @@ func NewGenerateName() resource.Resource {
 // generateName is the resource implementation.
 type generateName struct {
 	client *azurenamingtool.Client
+
+	// The naming tool's configuration is read once and reused. It governs which
+	// values are acceptable, changes only when an administrator edits it, and is
+	// several requests to fetch -- so retrieving it per resource would multiply
+	// the cost of a plan by the number of names in it. A provider process serves
+	// a single Terraform command, so caching for its lifetime is the right scope.
+	cfgOnce sync.Once
+	cfg     *azurenamingtool.NamingConfiguration
+	cfgErr  error
+}
+
+// configuration returns the naming tool's configuration, fetching it on first
+// use.
+func (r *generateName) configuration() (*azurenamingtool.NamingConfiguration, error) {
+	r.cfgOnce.Do(func() {
+		r.cfg, r.cfgErr = r.client.GetNamingConfiguration()
+	})
+	return r.cfg, r.cfgErr
 }
 
 // customComponentModel maps a single custom_component block.
@@ -379,6 +398,30 @@ func (r *generateName) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 
 	if r.client == nil {
 		return
+	}
+
+	// Check the request against the naming tool's configuration first. Anything
+	// found here would be rejected by the generation below anyway, but reported
+	// in the tool's terms and attributed to no particular argument.
+	//
+	// A configuration that cannot be read is reported as a warning rather than an
+	// error: validation is an improvement on the diagnostics, and it should never
+	// be the reason a plan fails. If the tool is genuinely unreachable the
+	// generation immediately after will say so.
+	if cfg, err := r.configuration(); err != nil {
+		resp.Diagnostics.AddWarning(
+			"Could Not Check Naming Tool Configuration",
+			fmt.Sprintf("The provider could not read the configuration used to check arguments "+
+				"before generating a name, so any problem with them will be reported by the "+
+				"Azure Naming Tool instead.\n\nError: %s", err),
+		)
+	} else {
+		resp.Diagnostics.Append(validateAgainstConfiguration(cfg, plan)...)
+		if resp.Diagnostics.HasError() {
+			// Generating now would only add a less specific report of the same
+			// problem.
+			return
+		}
 	}
 
 	generateRequest := azurenamingtool.GenerateNameRequest{
