@@ -5,7 +5,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -101,18 +100,10 @@ func (d *azurermResourcesDataSource) Read(ctx context.Context, req datasource.Re
 
 // Configure adds the provider configured client to the data source.
 func (d *azurermResourcesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*azurenamingtool.Client)
+	data, ok := configureDataSource(req, resp)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *azurenamingtool.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
 		return
 	}
 
-	d.client = client
+	d.client = data.client
 }

@@ -83,10 +83,17 @@ provider "proactnaming" {
 
 - `admin_password` (String, Sensitive) Admin password for the Azure Naming Tool. Can also be set via the `PROACTNAMING_ADMIN_PASSWORD` environment variable.
 
-Required for delete operations and drift detection. Without this value `terraform destroy` will fail and out-of-band deletions will not be detected.
+Required during `terraform plan` as well as destroy: the preview entry the provider creates while planning is removed through the Admin API. Setting `predict_names_locally` avoids that, and with it the need for this password at plan time.
 - `apikey` (String, Sensitive) API key for authenticating with the Azure Naming Tool. Can also be set via the `PROACTNAMING_APIKEY` environment variable.
 
 This key should have appropriate permissions to generate names via the API.
 - `host` (String) The base URL for the Azure Naming Tool API. Can also be set via the `PROACTNAMING_HOST` environment variable.
 
 Example: `https://your-naming-tool.azurewebsites.net`
+- `predict_names_locally` (Boolean) Determines how the name shown during `terraform plan` is arrived at. Can also be set via the `PROACTNAMING_PREDICT_NAMES_LOCALLY` environment variable.
+
+When `false`, the default, the provider asks the Azure Naming Tool to generate a name and then deletes the entry it created. That is accurate by construction, but it writes to the naming tool during every plan, needs `admin_password` to clean up after itself, and leaves an orphaned record behind whenever the cleanup fails.
+
+When `true`, the provider reads the naming tool's configuration and works the name out itself. Planning then performs no writes and needs no admin password, but the name is a reproduction of the tool's algorithm rather than the tool's own answer.
+
+The apply always calls the API, so the stored name is always the tool's. If a predicted name turns out to disagree with it, the apply fails and reports the difference rather than storing something the plan did not show.
