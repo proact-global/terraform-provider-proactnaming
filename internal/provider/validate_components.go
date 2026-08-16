@@ -224,48 +224,27 @@ func validateCustomComponents(
 	plan generateNameModel,
 	diags *diag.Diagnostics,
 ) {
-	// Custom component parents that the deployment defines at all.
-	parents := map[string]bool{}
-	for _, cc := range cfg.CustomComponents {
-		parents[strings.ToLower(cc.ParentComponent)] = true
-	}
-
 	check := func(name, value string, at path.Path) {
 		if name == "" || value == "" {
 			return
 		}
 
-		// A component marked free text accepts any value, whatever values happen
-		// to be registered against it. Registered values are suggestions there,
-		// not a closed set, so enumerating them would reject perfectly good input.
-		if component, ok := cfg.Component(name); ok && component.IsFreeText {
-			validateLength(component, name, value, diags)
-			return
-		}
-
-		if !parents[strings.ToLower(name)] {
-			// Unknown parents are reported only when the deployment defines
-			// custom components at all; otherwise the API is the better judge.
-			if len(parents) == 0 {
-				return
-			}
-			known := make([]string, 0, len(parents))
-			for p := range parents {
-				known = append(known, p)
-			}
-			sort.Strings(known)
-			diags.AddAttributeError(at, "Unknown Custom Component",
-				fmt.Sprintf("The Azure Naming Tool defines no custom component named %q.\n\n%s",
-					name, listValues(known)))
-			return
-		}
-
+		// The tool checks a custom component's value only when the deployment
+		// registers values for that particular component, and never checks its
+		// length: the length check it applies to components sits on the branch
+		// for built-in ones. With nothing registered it accepts any value, so
+		// there is nothing here to decide.
 		accepted := cfg.CustomComponentValues(name)
+		if len(accepted) == 0 {
+			return
+		}
+
 		for _, a := range accepted {
 			if a == value {
 				return
 			}
 		}
+
 		detail := fmt.Sprintf("The custom component %q does not accept %q.", name, value)
 		for _, a := range accepted {
 			if strings.EqualFold(a, value) {

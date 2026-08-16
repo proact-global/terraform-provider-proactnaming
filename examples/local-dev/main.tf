@@ -51,7 +51,7 @@ variable "resource_type" {
 resource "proactnaming_generate_name" "example" {
   organization  = var.organization
   resource_type = var.resource_type
-  application   = "localdev"
+  application   = "app"
   instance      = "001"
   location      = var.location
   environment   = var.environment

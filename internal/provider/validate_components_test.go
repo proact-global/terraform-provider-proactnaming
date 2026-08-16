@@ -201,17 +201,16 @@ func TestValidateCustomComponentBlocks(t *testing.T) {
 		}
 	})
 
-	t.Run("unknown component name is rejected", func(t *testing.T) {
+	// The tool checks a custom component's value only when values are
+	// registered for that particular component. A name it knows nothing about
+	// is passed through untouched, so the provider must not invent a rejection.
+	t.Run("component with no registered values is accepted", func(t *testing.T) {
 		plan := validPlan()
 		plan.CustomComponents = []customComponentModel{
 			{Name: types.StringValue("no_such_component"), Value: types.StringValue("x")},
 		}
-		d := validateAgainstConfiguration(testConfiguration(), plan)
-		if !d.HasError() {
-			t.Fatal("expected an error")
-		}
-		if got := d.Errors()[0].Detail(); !strings.Contains(got, "no custom component named") {
-			t.Errorf("detail = %q", got)
+		if d := validateAgainstConfiguration(testConfiguration(), plan); d.HasError() {
+			t.Errorf("a component with no registered values was rejected: %v", d.Errors())
 		}
 	})
 }
@@ -254,46 +253,43 @@ func TestListValuesCapsLongLists(t *testing.T) {
 	}
 }
 
-// TestValidateAcceptsAnyValueForAFreeTextCustomComponent covers a component
-// marked free text that also has values registered against it. The registered
-// values are suggestions, not a closed set, so enumerating them would reject
-// input the naming tool accepts.
-//
-// Found by running the provider against a naming tool that registers values for
-// its free-text application component; the deployment the acceptance tests use
-// registers none, so the suite could not have caught it.
-func TestValidateAcceptsAnyValueForAFreeTextCustomComponent(t *testing.T) {
+// TestValidateAcceptsAnyValueWhenNoneAreRegistered covers the deployment the
+// acceptance tests run against, which registers no values for its application
+// component and so accepts anything for it.
+func TestValidateAcceptsAnyValueWhenNoneAreRegistered(t *testing.T) {
 	cfg := testConfiguration()
-	cfg.Components = append(cfg.Components, azurenamingtool.ResourceComponent{
-		Name: "application", Enabled: true, SortOrder: 3,
-		IsCustom: true, IsFreeText: true, MinLength: "3", MaxLength: "40",
-	})
+	cfg.CustomComponents = nil
 
 	plan := validPlan()
-	plan.Application = types.StringValue("somethingnotregistered")
+	plan.Application = types.StringValue("anythingatall")
 
 	if d := validateAgainstConfiguration(cfg, plan); d.HasError() {
-		t.Errorf("a free-text component rejected an unregistered value: %v", d.Errors())
+		t.Errorf("value rejected though nothing is registered: %v", d.Errors())
 	}
 }
 
-// TestValidateStillChecksLengthOnFreeTextComponents ensures accepting any value
-// does not mean accepting any length.
-func TestValidateStillChecksLengthOnFreeTextComponents(t *testing.T) {
+// TestValidateDoesNotLengthCheckCustomComponents pins that the length bounds on
+// a custom component are not enforced. The tool applies its length check on the
+// branch handling built-in components only, so a deployment can carry bounds a
+// custom component's values comfortably exceed -- as this one does, its
+// application component bounded at 3 to 4 while names are built from values
+// like "drifttest".
+//
+// Enforcing them rejected requests the tool accepts, which the acceptance suite
+// caught immediately.
+func TestValidateDoesNotLengthCheckCustomComponents(t *testing.T) {
 	cfg := testConfiguration()
 	cfg.Components = append(cfg.Components, azurenamingtool.ResourceComponent{
 		Name: "application", Enabled: true, SortOrder: 3,
 		IsCustom: true, IsFreeText: true, MinLength: "3", MaxLength: "4",
 	})
+	// Nothing registered for this component, so any value is acceptable.
+	cfg.CustomComponents = nil
 
 	plan := validPlan()
 	plan.Application = types.StringValue("waytoolongforthis")
 
-	d := validateAgainstConfiguration(cfg, plan)
-	if !d.HasError() {
-		t.Fatal("expected a length error on a free-text component")
-	}
-	if got := d.Errors()[0].Detail(); !strings.Contains(got, "characters") {
-		t.Errorf("detail = %q, want a length complaint", got)
+	if d := validateAgainstConfiguration(cfg, plan); d.HasError() {
+		t.Errorf("a custom component value was length checked: %v", d.Errors())
 	}
 }
