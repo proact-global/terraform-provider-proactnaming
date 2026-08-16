@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-16
+
+### Added
+- `predict_names_locally` on the provider. When set, the name shown during `terraform plan` is worked out from the naming tool's configuration instead of being generated and deleted again. Planning then writes nothing to the naming tool and needs no `admin_password`, so a plan-only pipeline no longer requires write credentials. Creating two resources consumed ten records in the naming tool without it, eight of them previews created and deleted, against two with it. It is off by default.
+- Requests are checked against the naming tool's configuration while planning. An unknown resource type short name, a value the tool does not accept for a component, or an instance of the wrong width is now reported against the argument at fault, with the accepted values listed and a padded form suggested, rather than arriving from the API phrased in the tool's terms and attributed to nothing.
+- `scripts/local-dev.sh` and `examples/local-dev`, for running the provider from the working tree against a naming tool without publishing a release.
+
+### Fixed
+- Custom component values are checked the way the naming tool checks them: only when the deployment registers values for that particular component, and never by length. Bounds configured on a custom component are inert in the tool, so enforcing them rejected requests it accepts.
+
+### Changed
+- A predicted name that disagrees with the one the tool generates fails the apply with both names reported, rather than leaving Terraform to report an inconsistent result without saying what differed.
+- The acceptance suite covers the resource types data source, custom component blocks, the optional `function` argument, the plan-time checks and name prediction, none of which it reached before. It also records every record it creates or replaces in the naming tool and reports, at the end of a run, which of them still exist.
+
+### Internal
+- Dependency: `azurenamingtool-client-go` v0.12.0 to v0.13.1, which exposes the naming tool's configuration and can work out a name from it.
+
 ## [0.5.0] - 2026-08-15
 
 ### Changed

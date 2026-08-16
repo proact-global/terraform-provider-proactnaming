@@ -18,7 +18,7 @@ terraform {
   required_providers {
     proactnaming = {
       source  = "proact-global/proactnaming"
-      version = "~> 0.5"
+      version = "~> 0.6"
     }
   }
 }
