@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -31,6 +32,28 @@ func NewGenerateName() resource.Resource {
 // generateName is the resource implementation.
 type generateName struct {
 	client *azurenamingtool.Client
+
+	// predictNamesLocally selects how the plan-time name is arrived at. See the
+	// provider schema.
+	predictNamesLocally bool
+
+	// The naming tool's configuration is read once and reused. It governs which
+	// values are acceptable, changes only when an administrator edits it, and is
+	// several requests to fetch -- so retrieving it per resource would multiply
+	// the cost of a plan by the number of names in it. A provider process serves
+	// a single Terraform command, so caching for its lifetime is the right scope.
+	cfgOnce sync.Once
+	cfg     *azurenamingtool.NamingConfiguration
+	cfgErr  error
+}
+
+// configuration returns the naming tool's configuration, fetching it on first
+// use.
+func (r *generateName) configuration() (*azurenamingtool.NamingConfiguration, error) {
+	r.cfgOnce.Do(func() {
+		r.cfg, r.cfgErr = r.client.GetNamingConfiguration()
+	})
+	return r.cfg, r.cfgErr
 }
 
 // customComponentModel maps a single custom_component block.
@@ -199,6 +222,34 @@ func (r *generateName) Create(ctx context.Context, req resource.CreateRequest, r
 				"- Input parameters match your naming tool configuration", err.Error()),
 		)
 		return
+	}
+
+	// The plan showed a name, and Terraform requires the applied value to match
+	// it. Catching a difference here means reporting what actually differs,
+	// rather than leaving Terraform to report that the provider produced an
+	// inconsistent result without saying why.
+	if !plan.ResourceName.IsNull() && !plan.ResourceName.IsUnknown() {
+		if planned := plan.ResourceName.ValueString(); planned != generateResponse.ResourceName {
+			detail := fmt.Sprintf(
+				"The plan showed the name %q, but the Azure Naming Tool generated %q.\n\n",
+				planned, generateResponse.ResourceName)
+
+			if r.predictNamesLocally {
+				detail += "predict_names_locally is set, so the planned name was worked out by the " +
+					"provider rather than by the naming tool, and the two have disagreed. This means " +
+					"the provider's reproduction of the tool's naming algorithm is wrong for this " +
+					"configuration -- most likely because the naming tool has been upgraded.\n\n" +
+					"Unset predict_names_locally to have the tool generate the preview, which cannot " +
+					"disagree with itself, and please report the difference above."
+			} else {
+				detail += "The name was generated twice by the naming tool and differed between the " +
+					"plan and the apply. That usually means something changed in the tool between " +
+					"the two, such as another operation taking the name in between."
+			}
+
+			resp.Diagnostics.AddError("Generated Name Does Not Match The Plan", detail)
+			return
+		}
 	}
 
 	// Set the generated values in state - this creates the persistent entry.
@@ -381,6 +432,30 @@ func (r *generateName) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 		return
 	}
 
+	// Check the request against the naming tool's configuration first. Anything
+	// found here would be rejected by the generation below anyway, but reported
+	// in the tool's terms and attributed to no particular argument.
+	//
+	// A configuration that cannot be read is reported as a warning rather than an
+	// error: validation is an improvement on the diagnostics, and it should never
+	// be the reason a plan fails. If the tool is genuinely unreachable the
+	// generation immediately after will say so.
+	if cfg, err := r.configuration(); err != nil {
+		resp.Diagnostics.AddWarning(
+			"Could Not Check Naming Tool Configuration",
+			fmt.Sprintf("The provider could not read the configuration used to check arguments "+
+				"before generating a name, so any problem with them will be reported by the "+
+				"Azure Naming Tool instead.\n\nError: %s", err),
+		)
+	} else {
+		resp.Diagnostics.Append(validateAgainstConfiguration(cfg, plan)...)
+		if resp.Diagnostics.HasError() {
+			// Generating now would only add a less specific report of the same
+			// problem.
+			return
+		}
+	}
+
 	generateRequest := azurenamingtool.GenerateNameRequest{
 		ResourceOrg:         plan.Organization.ValueString(),
 		ResourceType:        plan.ResourceType.ValueString(),
@@ -389,6 +464,37 @@ func (r *generateName) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 		ResourceInstance:    plan.Instance.ValueString(),
 		ResourceLocation:    plan.Location.ValueString(),
 		CustomComponents:    plan.buildCustomComponents(),
+	}
+
+	// With prediction enabled the name is worked out from the configuration
+	// already read above, so planning writes nothing to the naming tool at all:
+	// no entry to create, none to delete, and no admin password needed.
+	if r.predictNamesLocally {
+		cfg, err := r.configuration()
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Predict Name",
+				fmt.Sprintf("predict_names_locally is set, so the provider works the name out from the "+
+					"Azure Naming Tool's configuration, but that configuration could not be read.\n\n"+
+					"Error: %s", err),
+			)
+			return
+		}
+
+		predicted, err := cfg.BuildName(generateRequest)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Predict Name",
+				fmt.Sprintf("predict_names_locally is set, but the name this configuration produces could "+
+					"not be determined.\n\n%s\n\nUnset predict_names_locally to have the Azure Naming Tool "+
+					"generate the preview instead.", err),
+			)
+			return
+		}
+
+		plan.ResourceName = types.StringValue(predicted)
+		resp.Diagnostics.Append(resp.Plan.Set(ctx, plan)...)
+		return
 	}
 
 	generateResponse, err := r.client.GenerateName(generateRequest)
@@ -435,19 +541,11 @@ func (r *generateName) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 func (r *generateName) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	// Add a nil check when handling ProviderData because Terraform.
 	// sets that data after it calls the ConfigureProvider RPC.
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*azurenamingtool.Client)
+	data, ok := configureResource(req, resp)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *azurenamingtool.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-
 		return
 	}
 
-	r.client = client
+	r.client = data.client
+	r.predictNamesLocally = data.predictNamesLocally
 }

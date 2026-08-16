@@ -38,3 +38,6 @@ website/vendor
 
 # Keep windows files with windows line endings
 *.winfile eol=crlf
+
+# Working directory for scripts/local-dev.sh
+/.local-dev/

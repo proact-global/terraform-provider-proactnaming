@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -41,9 +42,10 @@ type proactnamingProvider struct {
 
 // proactnamingProviderModel maps provider schema data to a Go type.
 type proactnamingProviderModel struct {
-	Host          types.String `tfsdk:"host"`
-	APIKey        types.String `tfsdk:"apikey"`
-	AdminPassword types.String `tfsdk:"admin_password"`
+	Host                types.String `tfsdk:"host"`
+	APIKey              types.String `tfsdk:"apikey"`
+	AdminPassword       types.String `tfsdk:"admin_password"`
+	PredictNamesLocally types.Bool   `tfsdk:"predict_names_locally"`
 }
 
 // Metadata returns the provider type name.
@@ -75,9 +77,26 @@ func (p *proactnamingProvider) Schema(_ context.Context, _ provider.SchemaReques
 			"admin_password": schema.StringAttribute{
 				Description: "Admin password for the Azure Naming Tool. Can also be set via the PROACTNAMING_ADMIN_PASSWORD environment variable.",
 				MarkdownDescription: "Admin password for the Azure Naming Tool. Can also be set via the `PROACTNAMING_ADMIN_PASSWORD` environment variable.\n\n" +
-					"Required for delete operations and drift detection. Without this value `terraform destroy` will fail and out-of-band deletions will not be detected.",
+					"Required during `terraform plan` as well as destroy: the preview entry the provider creates while planning is removed through the Admin API. " +
+					"Setting `predict_names_locally` avoids that, and with it the need for this password at plan time.",
 				Optional:  true,
 				Sensitive: true,
+			},
+			"predict_names_locally": schema.BoolAttribute{
+				Description: "Work out the name during planning instead of generating and deleting a preview entry. Can also be set via the PROACTNAMING_PREDICT_NAMES_LOCALLY environment variable.",
+				MarkdownDescription: "Determines how the name shown during `terraform plan` is arrived at. " +
+					"Can also be set via the `PROACTNAMING_PREDICT_NAMES_LOCALLY` environment variable.\n\n" +
+					"When `false`, the default, the provider asks the Azure Naming Tool to generate a name and then deletes " +
+					"the entry it created. That is accurate by construction, but it writes to the naming tool during every " +
+					"plan, needs `admin_password` to clean up after itself, and leaves an orphaned record behind whenever the " +
+					"cleanup fails.\n\n" +
+					"When `true`, the provider reads the naming tool's configuration and works the name out itself. Planning " +
+					"then performs no writes and needs no admin password, but the name is a reproduction of the tool's " +
+					"algorithm rather than the tool's own answer.\n\n" +
+					"The apply always calls the API, so the stored name is always the tool's. If a predicted name turns out " +
+					"to disagree with it, the apply fails and reports the difference rather than storing something the plan " +
+					"did not show.",
+				Optional: true,
 			},
 		},
 	}
@@ -182,6 +201,15 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
+	// How the plan-time name is arrived at. Unlike the credentials this has a
+	// usable default, so an unreadable environment value is simply "off" rather
+	// than an error.
+	predictLocally := strings.EqualFold(strings.TrimSpace(
+		os.Getenv("PROACTNAMING_PREDICT_NAMES_LOCALLY")), "true")
+	if !config.PredictNamesLocally.IsNull() && !config.PredictNamesLocally.IsUnknown() {
+		predictLocally = config.PredictNamesLocally.ValueBool()
+	}
+
 	// Create a new proactnaming client using the configuration values.
 	client, err := azurenamingtool.NewClient(&host, &apikey, &adminpassword)
 	if err != nil {
@@ -200,10 +228,14 @@ func (p *proactnamingProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	// Make the proactnaming client available during DataSource and Resource.
-	// type Configure methods.
-	resp.DataSourceData = client
-	resp.ResourceData = client
+	// Settings resources need, alongside the client, are passed together so a
+	// resource never has to re-read the environment to discover one.
+	data := &providerData{
+		client:              client,
+		predictNamesLocally: predictLocally,
+	}
+	resp.DataSourceData = data
+	resp.ResourceData = data
 }
 
 // DataSources defines the data sources implemented in the provider.
