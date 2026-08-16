@@ -38,6 +38,7 @@ func TestAccGeneratedNameDataSource(t *testing.T) {
 					// resource_type_name must be non-empty.
 					resource.TestCheckResourceAttrSet(
 						"data.proactnaming_generated_name.lookup", "generated_name.0.resource_type_name"),
+					testAccRecord(t, "proactnaming_generate_name.source", ledgerCreated),
 				),
 			},
 		},

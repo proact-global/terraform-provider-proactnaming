@@ -44,6 +44,7 @@ func TestAccGenerateNameResource(t *testing.T) {
 					// Verify the generated name contains the expected components (delimiter-agnostic).
 					resource.TestMatchResourceAttr("proactnaming_generate_name.test", "resource_name",
 						testAccNameRegexp(org, rt, "webapp", loc, env)),
+					testAccRecord(t, "proactnaming_generate_name.test", ledgerCreated),
 				),
 			},
 			// Test replacement behavior by changing instance.
@@ -55,6 +56,7 @@ func TestAccGenerateNameResource(t *testing.T) {
 					// Verify the new name is different and follows pattern.
 					resource.TestMatchResourceAttr("proactnaming_generate_name.test", "resource_name",
 						testAccNameRegexp(org, rt, "webapp", replacementInstance, loc, env)),
+					testAccRecord(t, "proactnaming_generate_name.test", ledgerReplaced),
 				),
 			},
 		},
@@ -83,6 +85,7 @@ func TestAccGenerateNameResource_DriftDetection(t *testing.T) {
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "id"),
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "resource_name"),
 					testAccRecordAttr("proactnaming_generate_name.test", "id", &createdID),
+					testAccRecord(t, "proactnaming_generate_name.test", ledgerCreated),
 				),
 			},
 			// Step 2: delete the name out of band before this step plans, then
@@ -108,6 +111,7 @@ func TestAccGenerateNameResource_DriftDetection(t *testing.T) {
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.test", "resource_name"),
 					resource.TestMatchResourceAttr("proactnaming_generate_name.test", "resource_name",
 						testAccNameRegexp(org, rt, "drifttest", loc, env)),
+					testAccRecord(t, "proactnaming_generate_name.test", ledgerReplaced),
 				),
 			},
 		},
@@ -184,6 +188,8 @@ func TestAccGenerateNameResource_MultipleResources(t *testing.T) {
 					// IDs must be set and independent.
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.rg", "id"),
 					resource.TestCheckResourceAttrSet("proactnaming_generate_name.st", "id"),
+					testAccRecord(t, "proactnaming_generate_name.rg", ledgerCreated),
+					testAccRecord(t, "proactnaming_generate_name.st", ledgerCreated),
 				),
 			},
 		},
