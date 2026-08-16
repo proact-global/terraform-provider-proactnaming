@@ -17,7 +17,7 @@ terraform {
   required_providers {
     proactnaming = {
       source  = "proact-global/proactnaming"
-      version = "~> 0.5"
+      version = "~> 0.6"
     }
   }
 }
@@ -40,6 +40,7 @@ provider "proactnaming" {
 | `host` | `PROACTNAMING_HOST` | Base URL of your Azure Naming Tool. Must include the scheme and must not end in a slash. |
 | `apikey` | `PROACTNAMING_APIKEY` | API key with permission to generate names. |
 | `admin_password` | `PROACTNAMING_ADMIN_PASSWORD` | Global admin password. See the note below — it is needed more often than you might expect. |
+| `predict_names_locally` | `PROACTNAMING_PREDICT_NAMES_LOCALLY` | Optional, off by default. Work the plan-time name out locally rather than generating one. See below. |
 
 All three can be supplied by environment variable instead, which keeps credentials out of your configuration:
 
@@ -148,6 +149,38 @@ provider_installation {
 
 Build with `go install`, and Terraform will use your binary. `terraform init` is skipped for overridden providers — Terraform prints a warning to that effect, which is expected.
 
+## Working the name out instead of generating one
+
+To show a real name during `terraform plan` rather than `(known after apply)`, the provider generates the name at plan time and deletes the preview entry again. That is accurate by construction, but it writes to the naming tool on every plan, needs `admin_password` to clean up, and leaves a record behind whenever the cleanup fails.
+
+Setting `predict_names_locally` avoids all of it. The provider reads the naming tool's configuration and works the name out from it, so planning performs no writes and needs no admin password:
+
+```hcl
+provider "proactnaming" {
+  predict_names_locally = true
+}
+```
+
+The saving is not marginal. Creating two resources consumed **ten** records in the naming tool with the default behaviour, eight of them previews created and deleted again, against **two** with this set.
+
+The apply still calls the API, so the stored name is always the tool's own. If a worked-out name ever disagrees with it, the apply fails and reports both names rather than storing one the plan did not show.
+
+### Limitations
+
+**It does not work for every resource type.** Deciding the name requires evaluating the resource type's validation pattern, because that pattern is what decides whether the delimiter survives. Go's regular expressions cannot evaluate every pattern .NET accepts — notably lookarounds, written `(?!...)` or `(?=...)`. Azure's rule that a resource group name may not end with a period is expressed that way:
+
+```
+^(?!.*[\.]$)[a-zA-Z0-9_\.()-]{1,90}$
+```
+
+For such a type the provider reports that the name cannot be worked out and names the pattern, rather than guessing at one that might be contradicted at apply. Resource types with plainer patterns, such as a storage account's `^[a-z0-9]{3,24}$`, are unaffected.
+
+So treat the setting as usable per resource type. If a plan fails saying a pattern cannot be evaluated, unset it, or keep those resources in a separate configuration.
+
+**Re-check it after upgrading the Azure Naming Tool.** Working the name out reproduces the tool's algorithm. The reproduction reads configuration at run time, so it follows a deployment's own components, ordering and delimiter — but the algorithm itself is a copy, and a tool upgrade could change it. Upstream changes it roughly once a year, on major versions.
+
+After an upgrade, run a plan and apply with the setting on and confirm they agree. A disagreement fails the apply with both names reported, so it cannot pass silently.
+
 ## Troubleshooting
 
 **`host … is missing a scheme`**
@@ -166,7 +199,13 @@ No resource type on your instance has that short name. Matching is exact and cas
 `instance` must be exactly the configured width — pad it, for example `001` rather than `1`.
 
 **`You must supply the required components.`**
-One or more of `organization`, `location` or `environment` is not a value your naming tool recognises, or a required custom component is missing.
+One or more of `organization`, `location` or `environment` is not a value your naming tool recognises, or a required custom component is missing. Since v0.6.0 the provider checks these while planning, so this arrives as an error against the argument at fault rather than from the API.
+
+**`Unable to Predict Name` … `cannot be evaluated`**
+`predict_names_locally` is set and the resource type's validation pattern uses a construct Go cannot evaluate. See the limitations above; unset the setting for that configuration.
+
+**`Generated Name Does Not Match The Plan`**
+The name the apply produced differs from the one the plan showed. With `predict_names_locally` set this means the worked-out name is wrong for this deployment, most likely after a naming tool upgrade — unset it and report the difference. Without it, the tool produced different names for the same request, which points at something else writing to it at the same time.
 
 ## Concurrency
 
