@@ -253,3 +253,47 @@ func TestListValuesCapsLongLists(t *testing.T) {
 		t.Errorf("empty list message = %q", got)
 	}
 }
+
+// TestValidateAcceptsAnyValueForAFreeTextCustomComponent covers a component
+// marked free text that also has values registered against it. The registered
+// values are suggestions, not a closed set, so enumerating them would reject
+// input the naming tool accepts.
+//
+// Found by running the provider against a naming tool that registers values for
+// its free-text application component; the deployment the acceptance tests use
+// registers none, so the suite could not have caught it.
+func TestValidateAcceptsAnyValueForAFreeTextCustomComponent(t *testing.T) {
+	cfg := testConfiguration()
+	cfg.Components = append(cfg.Components, azurenamingtool.ResourceComponent{
+		Name: "application", Enabled: true, SortOrder: 3,
+		IsCustom: true, IsFreeText: true, MinLength: "3", MaxLength: "40",
+	})
+
+	plan := validPlan()
+	plan.Application = types.StringValue("somethingnotregistered")
+
+	if d := validateAgainstConfiguration(cfg, plan); d.HasError() {
+		t.Errorf("a free-text component rejected an unregistered value: %v", d.Errors())
+	}
+}
+
+// TestValidateStillChecksLengthOnFreeTextComponents ensures accepting any value
+// does not mean accepting any length.
+func TestValidateStillChecksLengthOnFreeTextComponents(t *testing.T) {
+	cfg := testConfiguration()
+	cfg.Components = append(cfg.Components, azurenamingtool.ResourceComponent{
+		Name: "application", Enabled: true, SortOrder: 3,
+		IsCustom: true, IsFreeText: true, MinLength: "3", MaxLength: "4",
+	})
+
+	plan := validPlan()
+	plan.Application = types.StringValue("waytoolongforthis")
+
+	d := validateAgainstConfiguration(cfg, plan)
+	if !d.HasError() {
+		t.Fatal("expected a length error on a free-text component")
+	}
+	if got := d.Errors()[0].Detail(); !strings.Contains(got, "characters") {
+		t.Errorf("detail = %q, want a length complaint", got)
+	}
+}

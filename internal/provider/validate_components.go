@@ -234,6 +234,15 @@ func validateCustomComponents(
 		if name == "" || value == "" {
 			return
 		}
+
+		// A component marked free text accepts any value, whatever values happen
+		// to be registered against it. Registered values are suggestions there,
+		// not a closed set, so enumerating them would reject perfectly good input.
+		if component, ok := cfg.Component(name); ok && component.IsFreeText {
+			validateLength(component, name, value, diags)
+			return
+		}
+
 		if !parents[strings.ToLower(name)] {
 			// Unknown parents are reported only when the deployment defines
 			// custom components at all; otherwise the API is the better judge.
