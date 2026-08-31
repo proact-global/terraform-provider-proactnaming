@@ -214,7 +214,6 @@ var azurermResourceTypeMap = map[string][]string{
 	"automation/automationaccounts/runtimeenvironments":                            {"azurerm_automation_runtime_environment"},
 	"automation/automationaccounts/runtimeenvironments/packages":                   {"azurerm_automation_runtime_environment_package"},
 	"automation/automationaccounts/schedules":                                      {"azurerm_automation_schedule"},
-	"automation/automationaccounts/softwareupdateconfigurations":                   {"azurerm_automation_software_update_configuration"},
 	"automation/automationaccounts/sourcecontrols":                                 {"azurerm_automation_source_control"},
 	"automation/automationaccounts/variables": {
 		"azurerm_automation_variable_bool",
@@ -248,7 +247,6 @@ var azurermResourceTypeMap = map[string][]string{
 	// Batch
 	"batch/batchaccounts":              {"azurerm_batch_account"},
 	"batch/batchaccounts/applications": {"azurerm_batch_application"},
-	"batch/batchaccounts/certificates": {"azurerm_batch_certificate"},
 	"batch/batchaccounts/pools":        {"azurerm_batch_pool"},
 	"batch/batchaccounts/pools/jobs":   {"azurerm_batch_job"},
 
@@ -298,10 +296,13 @@ var azurermResourceTypeMap = map[string][]string{
 	"cdn/profiles/endpoints/customdomains": {"azurerm_cdn_endpoint_custom_domain"},
 	"cdn/profiles/origingroups":            {"azurerm_cdn_frontdoor_origin_group"},
 	"cdn/profiles/origingroups/origins":    {"azurerm_cdn_frontdoor_origin"},
-	"cdn/profiles/rulesets":                {"azurerm_cdn_frontdoor_rule_set"},
-	"cdn/profiles/rulesets/rules":          {"azurerm_cdn_frontdoor_rule"},
-	"cdn/profiles/secrets":                 {"azurerm_cdn_frontdoor_secret"},
-	"cdn/profiles/securitypolicies":        {"azurerm_cdn_frontdoor_security_policy"},
+	"cdn/profiles/rulesets": {
+		"azurerm_cdn_frontdoor_batch_rule_set",
+		"azurerm_cdn_frontdoor_rule_set",
+	},
+	"cdn/profiles/rulesets/rules":   {"azurerm_cdn_frontdoor_rule"},
+	"cdn/profiles/secrets":          {"azurerm_cdn_frontdoor_secret"},
+	"cdn/profiles/securitypolicies": {"azurerm_cdn_frontdoor_security_policy"},
 
 	// CertificateRegistration
 	"certificateregistration/certificateorders": {"azurerm_app_service_certificate_order"},
@@ -315,7 +316,14 @@ var azurermResourceTypeMap = map[string][]string{
 	"codesigning/codesigningaccounts": {"azurerm_trusted_signing_account"},
 
 	// CognitiveServices
-	"cognitiveservices/accounts":               {"azurerm_cognitive_account"},
+	"cognitiveservices/accounts": {"azurerm_cognitive_account"},
+	"cognitiveservices/accounts/connections": {
+		"azurerm_cognitive_account_connection_account_key",
+		"azurerm_cognitive_account_connection_account_managed_identity",
+		"azurerm_cognitive_account_connection_api_key",
+		"azurerm_cognitive_account_connection_custom_keys",
+		"azurerm_cognitive_account_connection_entra_id",
+	},
 	"cognitiveservices/accounts/deployments":   {"azurerm_cognitive_deployment"},
 	"cognitiveservices/accounts/projects":      {"azurerm_cognitive_account_project"},
 	"cognitiveservices/accounts/raiblocklists": {"azurerm_cognitive_account_rai_blocklist"},
@@ -391,12 +399,15 @@ var azurermResourceTypeMap = map[string][]string{
 	"containerregistry/registries/webhooks":            {"azurerm_container_registry_webhook"},
 
 	// ContainerService
-	"containerservice/deploymentsafeguards":                      {"azurerm_kubernetes_cluster_deployment_safeguard"},
-	"containerservice/fleets":                                    {"azurerm_kubernetes_fleet_manager"},
-	"containerservice/fleets/members":                            {"azurerm_kubernetes_fleet_member"},
-	"containerservice/fleets/updateruns":                         {"azurerm_kubernetes_fleet_update_run"},
-	"containerservice/fleets/updatestrategies":                   {"azurerm_kubernetes_fleet_update_strategy"},
-	"containerservice/managedclusters":                           {"azurerm_kubernetes_cluster"},
+	"containerservice/deploymentsafeguards":    {"azurerm_kubernetes_cluster_deployment_safeguard"},
+	"containerservice/fleets":                  {"azurerm_kubernetes_fleet_manager"},
+	"containerservice/fleets/members":          {"azurerm_kubernetes_fleet_member"},
+	"containerservice/fleets/updateruns":       {"azurerm_kubernetes_fleet_update_run"},
+	"containerservice/fleets/updatestrategies": {"azurerm_kubernetes_fleet_update_strategy"},
+	"containerservice/managedclusters": {
+		"azurerm_kubernetes_automatic_cluster",
+		"azurerm_kubernetes_cluster",
+	},
 	"containerservice/managedclusters/agentpools":                {"azurerm_kubernetes_cluster_node_pool"},
 	"containerservice/managedclusters/trustedaccessrolebindings": {"azurerm_kubernetes_cluster_trusted_access_role_binding"},
 
@@ -511,7 +522,6 @@ var azurermResourceTypeMap = map[string][]string{
 		"azurerm_data_protection_backup_instance_disk",
 		"azurerm_data_protection_backup_instance_kubernetes_cluster",
 		"azurerm_data_protection_backup_instance_mysql_flexible_server",
-		"azurerm_data_protection_backup_instance_postgresql",
 		"azurerm_data_protection_backup_instance_postgresql_flexible_server",
 	},
 	"dataprotection/backupvaults/backuppolicies": {
@@ -520,7 +530,6 @@ var azurermResourceTypeMap = map[string][]string{
 		"azurerm_data_protection_backup_policy_disk",
 		"azurerm_data_protection_backup_policy_kubernetes_cluster",
 		"azurerm_data_protection_backup_policy_mysql_flexible_server",
-		"azurerm_data_protection_backup_policy_postgresql",
 		"azurerm_data_protection_backup_policy_postgresql_flexible_server",
 	},
 	"dataprotection/resourceguards": {"azurerm_data_protection_resource_guard"},
@@ -555,13 +564,6 @@ var azurermResourceTypeMap = map[string][]string{
 	"dbforpostgresql/servergroupsv2/firewallrules":             {"azurerm_cosmosdb_postgresql_firewall_rule"},
 	"dbforpostgresql/servergroupsv2/nodeconfigurations":        {"azurerm_cosmosdb_postgresql_node_configuration"},
 	"dbforpostgresql/servergroupsv2/roles":                     {"azurerm_cosmosdb_postgresql_role"},
-	"dbforpostgresql/servers":                                  {"azurerm_postgresql_server"},
-	"dbforpostgresql/servers/administrators":                   {"azurerm_postgresql_active_directory_administrator"},
-	"dbforpostgresql/servers/configurations":                   {"azurerm_postgresql_configuration"},
-	"dbforpostgresql/servers/databases":                        {"azurerm_postgresql_database"},
-	"dbforpostgresql/servers/firewallrules":                    {"azurerm_postgresql_firewall_rule"},
-	"dbforpostgresql/servers/keys":                             {"azurerm_postgresql_server_key"},
-	"dbforpostgresql/servers/virtualnetworkrules":              {"azurerm_postgresql_virtual_network_rule"},
 
 	// DesktopVirtualization
 	"desktopvirtualization/applicationgroups":              {"azurerm_virtual_desktop_application_group"},
@@ -802,7 +804,8 @@ var azurermResourceTypeMap = map[string][]string{
 	"kusto/clusters/principalassignments":           {"azurerm_kusto_cluster_principal_assignment"},
 
 	// LoadTestService
-	"loadtestservice/loadtests": {"azurerm_load_test"},
+	"loadtestservice/loadtests":            {"azurerm_load_test"},
+	"loadtestservice/playwrightworkspaces": {"azurerm_playwright_workspace"},
 
 	// Logic
 	"logic/integrationaccounts":                     {"azurerm_logic_app_integration_account"},
@@ -869,8 +872,7 @@ var azurermResourceTypeMap = map[string][]string{
 	"management/managementgroups": {"azurerm_management_group"},
 
 	// Maps
-	"maps/accounts":          {"azurerm_maps_account"},
-	"maps/accounts/creators": {"azurerm_maps_creator"},
+	"maps/accounts": {"azurerm_maps_account"},
 
 	// MarketplaceOrdering
 	"marketplaceordering/agreements/offers/plans": {"azurerm_marketplace_agreement"},
@@ -879,11 +881,15 @@ var azurermResourceTypeMap = map[string][]string{
 	"monitor/accounts": {"azurerm_monitor_workspace"},
 
 	// NetApp
-	"netapp/netappaccounts":                                        {"azurerm_netapp_account"},
-	"netapp/netappaccounts/backuppolicies":                         {"azurerm_netapp_backup_policy"},
-	"netapp/netappaccounts/backupvaults":                           {"azurerm_netapp_backup_vault"},
-	"netapp/netappaccounts/capacitypools":                          {"azurerm_netapp_pool"},
-	"netapp/netappaccounts/capacitypools/volumes":                  {"azurerm_netapp_volume"},
+	"netapp/netappaccounts":                       {"azurerm_netapp_account"},
+	"netapp/netappaccounts/backuppolicies":        {"azurerm_netapp_backup_policy"},
+	"netapp/netappaccounts/backupvaults":          {"azurerm_netapp_backup_vault"},
+	"netapp/netappaccounts/capacitypools":         {"azurerm_netapp_pool"},
+	"netapp/netappaccounts/capacitypools/volumes": {"azurerm_netapp_volume"},
+	"netapp/netappaccounts/capacitypools/volumes/buckets": {
+		"azurerm_netapp_volume_bucket",
+		"azurerm_netapp_volume_bucket_with_server",
+	},
 	"netapp/netappaccounts/capacitypools/volumes/snapshots":        {"azurerm_netapp_snapshot"},
 	"netapp/netappaccounts/capacitypools/volumes/volumequotarules": {"azurerm_netapp_volume_quota_rule"},
 	"netapp/netappaccounts/encryptions":                            {"azurerm_netapp_account_encryption"},
@@ -1082,7 +1088,10 @@ var azurermResourceTypeMap = map[string][]string{
 	"operationalinsights/workspaces/linkedstorageaccounts": {"azurerm_log_analytics_linked_storage_account"},
 	"operationalinsights/workspaces/savedsearches":         {"azurerm_log_analytics_saved_search"},
 	"operationalinsights/workspaces/storageinsightconfigs": {"azurerm_log_analytics_storage_insights"},
-	"operationalinsights/workspaces/tables":                {"azurerm_log_analytics_workspace_table_custom_log"},
+	"operationalinsights/workspaces/tables": {
+		"azurerm_log_analytics_workspace_table_custom_log",
+		"azurerm_log_analytics_workspace_table_microsoft",
+	},
 
 	// OperationsManagement
 	"operationsmanagement/solutions": {"azurerm_log_analytics_solution"},
@@ -1098,11 +1107,6 @@ var azurermResourceTypeMap = map[string][]string{
 	"oracle.database/cloudvmclusters":                               {"azurerm_oracle_cloud_vm_cluster"},
 	"oracle.database/exascaledbstoragevaults":                       {"azurerm_oracle_exascale_database_storage_vault"},
 	"oracle.database/resourceanchors":                               {"azurerm_oracle_resource_anchor"},
-
-	// Orbital
-	"orbital/contactprofiles":      {"azurerm_orbital_contact_profile"},
-	"orbital/spacecrafts":          {"azurerm_orbital_spacecraft"},
-	"orbital/spacecrafts/contacts": {"azurerm_orbital_contact"},
 
 	// PaloAltoNetworks.Cloudngfw
 	"paloaltonetworks.cloudngfw/firewalls": {
@@ -1221,7 +1225,6 @@ var azurermResourceTypeMap = map[string][]string{
 	"security/assessmentmetadata":                     {"azurerm_security_center_assessment_policy"},
 	"security/assessments":                            {"azurerm_security_center_assessment"},
 	"security/automations":                            {"azurerm_security_center_automation"},
-	"security/autoprovisioningsettings":               {"azurerm_security_center_auto_provisioning"},
 	"security/defenderforstoragesettings":             {"azurerm_security_center_storage_defender"},
 	"security/devicesecuritygroups":                   {"azurerm_iot_security_device_group"},
 	"security/iotsecuritysolutions":                   {"azurerm_iot_security_solution"},
@@ -1375,18 +1378,12 @@ var azurermResourceTypeMap = map[string][]string{
 	"storage/storageaccounts/queueservices":                                {"azurerm_storage_account_queue_properties"},
 	"storage/storageaccounts/queueservices/queues":                         {"azurerm_storage_queue"},
 	"storage/storageaccounts/staticwebsites":                               {"azurerm_storage_account_static_website"},
+	"storage/storageaccounts/tableservices":                                {"azurerm_storage_account_table_properties"},
 	"storage/storageaccounts/tableservices/tables":                         {"azurerm_storage_table"},
 	"storage/storageaccounts/tableservices/tables/partitionkeys/rowkeys":   {"azurerm_storage_table_entity"},
 
 	// StorageCache
-	"storagecache/amlfilesystems":             {"azurerm_managed_lustre_file_system"},
-	"storagecache/caches":                     {"azurerm_hpc_cache"},
-	"storagecache/caches/cacheaccesspolicies": {"azurerm_hpc_cache_access_policy"},
-	"storagecache/caches/storagetargets": {
-		"azurerm_hpc_cache_blob_nfs_target",
-		"azurerm_hpc_cache_blob_target",
-		"azurerm_hpc_cache_nfs_target",
-	},
+	"storagecache/amlfilesystems": {"azurerm_managed_lustre_file_system"},
 
 	// StorageMover
 	"storagemover/storagemovers":        {"azurerm_storage_mover"},
@@ -1465,10 +1462,6 @@ var azurermResourceTypeMap = map[string][]string{
 
 	// VideoIndexer
 	"videoindexer/accounts": {"azurerm_video_indexer_account"},
-
-	// VoiceServices
-	"voiceservices/communicationsgateways":           {"azurerm_voice_services_communications_gateway"},
-	"voiceservices/communicationsgateways/testlines": {"azurerm_voice_services_communications_gateway_test_line"},
 
 	// Web
 	"web/certificates": {
